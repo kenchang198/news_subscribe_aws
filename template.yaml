@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: News Subscribe App - Lambda Function
+
+Globals:
+  Function:
+    Timeout: 300
+    MemorySize: 256
+
+Resources:
+  NewsProcessingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      # Handler: src/main.lambda_handler
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.9
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          S3_BUCKET_NAME: !Ref S3BucketName
+          OPENAI_API_KEY: !Ref OpenAIApiKey
+      Policies:
+        - AmazonPollyFullAccess
+        - S3FullAccessPolicy:
+            BucketName: !Ref S3BucketName
+      Events:
+        ScheduledEvent:
+          Type: Schedule
+          Properties:
+            Schedule: rate(6 hours)
+            Name: NewsProcessingSchedule
+            Description: Triggers the news processing function every 6 hours
+
+Parameters:
+  S3BucketName:
+    Type: String
+    Default: news-audio-files-kenchang198-dev
+    Description: Name of the S3 bucket for storing audio files
+  
+  OpenAIApiKey:
+    Type: String
+    NoEcho: true
+    Description: OpenAI API Key
+
+Outputs:
+  NewsProcessingFunction:
+    Description: News Processing Lambda Function ARN
+    Value: !GetAtt NewsProcessingFunction.Arn
+  
+  S3BucketName:
+    Description: S3 bucket for audio files
+    Value: !Ref S3BucketName
