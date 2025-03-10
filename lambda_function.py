@@ -1,5 +1,4 @@
 import json
-import os
 import time
 from src.fetch_rss import fetch_rss
 from src.summarize import summarize_article
