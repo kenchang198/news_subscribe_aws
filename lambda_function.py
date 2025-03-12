@@ -2,7 +2,6 @@ import json
 import os
 import time
 import logging
-import shutil
 from src.fetch_rss import fetch_rss
 from src.summarize import summarize_article
 from src.text_to_speech import synthesize_speech
@@ -12,7 +11,9 @@ from src.config import (
     RSS_FEEDS,
     API_DELAY_SECONDS,
     AUDIO_DIR,
-    IS_LAMBDA
+    IS_LAMBDA,
+    LOCAL_DATA_DIR,
+    S3_OBJECT_DATA_DIR
 )
 
 # ロギング設定
@@ -113,23 +114,23 @@ def lambda_handler(event, context):
         try:
             json_data = json.dumps(
                 processed_articles, ensure_ascii=False, indent=2)
-            json_filename = f"{AUDIO_DIR}/processed_articles.json"
+
+            processed_articles_json = "processed_articles.json"
+
+            if IS_LAMBDA:
+                json_filename = f"{AUDIO_DIR}/{processed_articles_json}"
+            else:
+                json_filename = f"{LOCAL_DATA_DIR}/{processed_articles_json}"
 
             with open(json_filename, "w", encoding="utf-8") as f:
                 f.write(json_data)
 
             # Lambda環境の場合のみS3にアップロード
+            metadata_path = f"{S3_OBJECT_DATA_DIR}/{processed_articles_json}"
             if IS_LAMBDA:
-                metadata_path = "data/processed_articles.json"
                 metadata_url = upload_to_s3(json_filename, metadata_path)
                 logger.info(f"Metadata uploaded to S3: {metadata_url}")
-            else:
-                # ローカル環境ではdata/ディレクトリにコピー
-                data_dir = "data"
-                os.makedirs(data_dir, exist_ok=True)
-                metadata_local_path = f"{data_dir}/processed_articles.json"
-                shutil.copy2(json_filename, metadata_local_path)
-                logger.info(f"Metadata saved locally: {metadata_local_path}")
+
         except Exception as e:
             logger.error(f"Error saving metadata: {str(e)}", exc_info=True)
 

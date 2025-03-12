@@ -15,10 +15,6 @@ def upload_to_s3(local_file_path, object_name=None):
     if object_name is None:
         object_name = os.path.basename(local_file_path)
 
-    # 必要に応じてS3のプレフィックスを追加
-    if S3_PREFIX:
-        object_name = f"{S3_PREFIX}{object_name}"
-
     # S3クライアントを作成
     s3_client = boto3.client('s3', region_name=AWS_REGION)
 

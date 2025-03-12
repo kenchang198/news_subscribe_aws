@@ -48,3 +48,6 @@ if IS_LAMBDA:
     AUDIO_DIR = '/tmp'
 else:
     AUDIO_DIR = 'audio'
+
+S3_OBJECT_DATA_DIR = 'data'
+LOCAL_DATA_DIR = 'data'
