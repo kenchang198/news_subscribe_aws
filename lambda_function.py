@@ -2,6 +2,7 @@ import json
 import os
 import time
 import logging
+import shutil
 from src.fetch_rss import fetch_rss
 from src.summarize import summarize_article
 from src.text_to_speech import synthesize_speech
@@ -10,7 +11,8 @@ from src.config import (
     MAX_ARTICLES_PER_FEED,
     RSS_FEEDS,
     API_DELAY_SECONDS,
-    AUDIO_DIR
+    AUDIO_DIR,
+    IS_LAMBDA
 )
 
 # ロギング設定
@@ -74,9 +76,12 @@ def lambda_handler(event, context):
                     audio_file = synthesize_speech(
                         summarized_text, output_filename)
 
-                    # アップロード（Lambda環境ではS3、ローカル環境ではファイルコピー）
+                    # Lambda環境の場合のみS3にアップロード、ローカルではファイルパスをそのまま使用
                     if audio_file:
-                        file_url = upload_to_s3(audio_file)
+                        if IS_LAMBDA:
+                            file_url = upload_to_s3(audio_file)
+                        else:
+                            file_url = audio_file  # ローカル環境ではファイルパスをそのまま使用
 
                         if file_url:
                             # 処理結果を記録
@@ -90,7 +95,7 @@ def lambda_handler(event, context):
                                 "processed_at": time.strftime("%Y-%m-%d %H:%M:%S"),
                             })
                             logger.info(
-                                f"Audio file created and stored: {file_url}")
+                                f"Audio file {'uploaded to S3' if IS_LAMBDA else 'saved locally'}: {file_url}")
 
                 except Exception as e:
                     logger.error(
@@ -113,10 +118,18 @@ def lambda_handler(event, context):
             with open(json_filename, "w", encoding="utf-8") as f:
                 f.write(json_data)
 
-            # メタデータをアップロード
-            metadata_path = "data/processed_articles.json"
-            metadata_url = upload_to_s3(json_filename, metadata_path)
-            logger.info(f"Metadata saved to: {metadata_url}")
+            # Lambda環境の場合のみS3にアップロード
+            if IS_LAMBDA:
+                metadata_path = "data/processed_articles.json"
+                metadata_url = upload_to_s3(json_filename, metadata_path)
+                logger.info(f"Metadata uploaded to S3: {metadata_url}")
+            else:
+                # ローカル環境ではdata/ディレクトリにコピー
+                data_dir = "data"
+                os.makedirs(data_dir, exist_ok=True)
+                metadata_local_path = f"{data_dir}/processed_articles.json"
+                shutil.copy2(json_filename, metadata_local_path)
+                logger.info(f"Metadata saved locally: {metadata_local_path}")
         except Exception as e:
             logger.error(f"Error saving metadata: {str(e)}", exc_info=True)
 
