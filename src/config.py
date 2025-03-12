@@ -33,10 +33,6 @@ RSS_FEEDS = [
     }
 ]
 
-# ローカル保存パス設定
-LOCAL_AUDIO_DIR = os.environ.get('LOCAL_AUDIO_DIR', 'audio/')
-LOCAL_DATA_DIR = os.environ.get('LOCAL_DATA_DIR', 'data/')
-
 # アプリケーション設定
 MAX_ARTICLES_PER_FEED = int(os.environ.get('MAX_ARTICLES_PER_FEED', '5'))
 SUMMARY_MAX_LENGTH = int(os.environ.get('SUMMARY_MAX_LENGTH', '300'))
@@ -44,3 +40,11 @@ API_DELAY_SECONDS = float(os.environ.get('API_DELAY_SECONDS', '1.0'))
 
 # ロギング設定
 LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
+
+# Lambda環境かどうかを判定
+IS_LAMBDA = os.environ.get('AWS_LAMBDA_FUNCTION_NAME') is not None
+
+if IS_LAMBDA:
+    AUDIO_DIR = '/tmp'
+else:
+    AUDIO_DIR = 'audio'
