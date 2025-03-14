@@ -29,7 +29,7 @@ Resources:
         ScheduledEvent:
           Type: Schedule
           Properties:
-            Schedule: rate(6 hours)
+            Schedule: rate(1 day)
             Name: NewsProcessingSchedule
             Description: Triggers the news processing function every 6 hours
 
