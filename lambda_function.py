@@ -55,7 +55,7 @@ def lambda_handler(event, context):
         logger.info(f"Processing feed: {source_name}")
 
         try:
-            articles = fetch_rss(feed_url)
+            articles = fetch_rss(feed_url, IS_LAMBDA, S3_BUCKET_NAME)
 
             # 各記事を処理
             for article in articles[:MAX_ARTICLES_PER_FEED]:
