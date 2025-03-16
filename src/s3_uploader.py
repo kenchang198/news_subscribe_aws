@@ -1,6 +1,6 @@
 import boto3
 import os
-from src.config import AWS_REGION, S3_BUCKET_NAME, S3_PREFIX
+from src.config import AWS_REGION, S3_BUCKET_NAME
 
 
 def upload_to_s3(local_file_path, object_name=None):

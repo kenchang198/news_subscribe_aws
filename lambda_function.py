@@ -2,6 +2,8 @@ import json
 import os
 import time
 import logging
+import boto3
+import shutil
 from src.fetch_rss import fetch_rss
 from src.summarize import summarize_article
 from src.text_to_speech import synthesize_speech
@@ -13,7 +15,8 @@ from src.config import (
     AUDIO_DIR,
     IS_LAMBDA,
     LOCAL_DATA_DIR,
-    S3_OBJECT_DATA_DIR
+    S3_OBJECT_DATA_DIR,
+    S3_BUCKET_NAME
 )
 
 # ロギング設定
@@ -112,24 +115,57 @@ def lambda_handler(event, context):
     # 処理結果をJSONとして保存
     if processed_articles:
         try:
-            json_data = json.dumps(
-                processed_articles, ensure_ascii=False, indent=2)
+            # 現在日付をエピソードIDとして使用
+            today = time.strftime("%Y-%m-%d")
+            episode_data = {
+                "episode_id": today,
+                "title": f"ITニュース要約 ({today})",
+                "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "articles": processed_articles
+            }
 
-            processed_articles_json = "processed_articles.json"
+            json_data = json.dumps(episode_data, ensure_ascii=False, indent=2)
 
-            if IS_LAMBDA:
-                json_filename = f"{AUDIO_DIR}/{processed_articles_json}"
-            else:
-                json_filename = f"{LOCAL_DATA_DIR}/{processed_articles_json}"
-
-            with open(json_filename, "w", encoding="utf-8") as f:
+            # エピソードごとのJSONファイルを保存
+            episode_filename = f"{AUDIO_DIR}/episode_{today}.json"
+            with open(episode_filename, "w", encoding="utf-8") as f:
                 f.write(json_data)
 
             # Lambda環境の場合のみS3にアップロード
-            metadata_path = f"{S3_OBJECT_DATA_DIR}/{processed_articles_json}"
             if IS_LAMBDA:
-                metadata_url = upload_to_s3(json_filename, metadata_path)
-                logger.info(f"Metadata uploaded to S3: {metadata_url}")
+                # 個別エピソードのJSONをアップロード
+                episode_path = f"{S3_OBJECT_DATA_DIR}/episodes/episode_{today}.json"
+                episode_url = upload_to_s3(episode_filename, episode_path)
+                logger.info(f"エピソードデータをS3にアップロードしました: {episode_url}")
+
+                # エピソードリストの更新
+                episodes_list_path, episodes_list_filename = update_episodes_list(
+                    today, processed_articles, AUDIO_DIR, is_lambda=True
+                )
+
+                # S3にアップロード
+                episodes_list_url = upload_to_s3(
+                    episodes_list_filename, episodes_list_path)
+                logger.info(f"エピソードリストを更新しS3にアップロードしました: {episodes_list_url}")
+
+            else:
+                # ローカル環境
+                episodes_dir = f"{LOCAL_DATA_DIR}/episodes"
+                os.makedirs(episodes_dir, exist_ok=True)
+
+                # 個別エピソードのJSONをコピー
+                episode_local_path = f"{episodes_dir}/episode_{today}.json"
+                shutil.copy2(episode_filename, episode_local_path)
+                logger.info(f"エピソードデータをローカルに保存しました: {episode_local_path}")
+
+                # エピソードリストの更新
+                episodes_list_path, episodes_list_filename = update_episodes_list(
+                    today, processed_articles, AUDIO_DIR, is_lambda=False
+                )
+
+                # ローカルの保存場所にコピー
+                shutil.copy2(episodes_list_filename, episodes_list_path)
+                logger.info(f"エピソードリストをローカルに更新しました: {episodes_list_path}")
 
         except Exception as e:
             logger.error(f"Error saving metadata: {str(e)}", exc_info=True)
@@ -145,6 +181,76 @@ def lambda_handler(event, context):
     logger.info(
         f"Processing completed: {len(processed_articles)} articles processed")
     return result
+
+
+def update_episodes_list(today, processed_articles, tmp_dir, is_lambda=False):
+    """
+    エピソードリストを更新する関数
+
+    Args:
+        today: エピソードID（日付形式の文字列）
+        processed_articles: 処理された記事のリスト
+        tmp_dir: 一時ディレクトリのパス
+        is_lambda: Lambda環境かどうか
+
+    Returns:
+        tuple: (エピソードリストのパス, 保存されたファイルのパス)
+    """
+    logger = logging.getLogger(__name__)
+    episodes_list = []
+
+    # エピソードの要約情報
+    episode_summary = {
+        "episode_id": today,
+        "title": f"ITニュース要約 ({today})",
+        "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "article_count": len(processed_articles)
+    }
+
+    if is_lambda:
+        episodes_list_path = "data/episodes_list.json"
+
+        try:
+            # 既存のエピソードリストを取得（存在すれば）
+            s3_client = boto3.client('s3', region_name='ap-northeast-1')
+            try:
+                existing_list = s3_client.get_object(
+                    Bucket=S3_BUCKET_NAME, Key=episodes_list_path)
+                episodes_list = json.loads(existing_list['Body'].read())
+            except Exception as e:
+                logger.info(f"エピソードリストが存在しないため新規作成します: {str(e)}")
+        except Exception as e:
+            logger.error(f"S3からエピソードリストの取得中にエラーが発生しました: {str(e)}")
+    else:
+        # ローカル環境での処理
+        data_dir = "data"
+        episodes_list_path = f"{data_dir}/episodes_list.json"
+
+        # 既存のリストを読み込み（存在すれば）
+        if os.path.exists(episodes_list_path):
+            try:
+                with open(episodes_list_path, "r", encoding="utf-8") as f:
+                    episodes_list = json.loads(f.read())
+            except Exception as e:
+                logger.error(f"ローカルのエピソードリスト読み込み中にエラー: {str(e)}")
+
+    # 重複チェック
+    existing_ids = [ep["episode_id"] for ep in episodes_list]
+    if today not in existing_ids:
+        episodes_list.append(episode_summary)
+
+    # 日付順に並べ替え（新しい順）
+    episodes_list.sort(key=lambda x: x["episode_id"], reverse=True)
+
+    # 更新したリストを保存
+    episodes_list_json = json.dumps(
+        episodes_list, ensure_ascii=False, indent=2)
+    episodes_list_filename = f"{tmp_dir}/episodes_list.json"
+
+    with open(episodes_list_filename, "w", encoding="utf-8") as f:
+        f.write(episodes_list_json)
+
+    return episodes_list_path, episodes_list_filename
 
 
 # ローカルテスト用

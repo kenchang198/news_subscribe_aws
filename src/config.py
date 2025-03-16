@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # AWS 設定
-AWS_REGION = os.environ.get('AWS_REGION')
+AWS_REGION = os.environ.get('AWS_REGION', 'ap-northeast-1')
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 
@@ -24,8 +24,8 @@ POLLY_ENGINE = os.environ.get('POLLY_ENGINE', 'neural')  # standard または ne
 # RSS フィード設定
 RSS_FEEDS = [
     {
-        'url': 'https://b.hatena.ne.jp/hotentry/it.rss',
-        'name': 'はてなブックマーク - テクノロジー'
+        'url': 'https://b.hatena.ne.jp/entrylist/it.rss',
+        'name': 'はてなブックマーク - 新着エントリー - テクノロジー'
     },
     {
         'url': 'https://www.businessinsider.jp/feed/index.xml',
