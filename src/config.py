@@ -16,9 +16,16 @@ AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 S3_BUCKET_NAME = os.environ.get('S3_BUCKET_NAME')
 S3_PREFIX = os.environ.get('S3_PREFIX', 'audio/')
 
-# OpenAI API 設定
+# OpenAI API 設定（レガシーサポート用）
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-3.5-turbo')
+
+# Google Gemini API 設定
+GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
+GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-pro')  # gemini-proをデフォルトに変更
+
+# AI プロバイダー設定
+AI_PROVIDER = os.environ.get('AI_PROVIDER', 'gemini')  # 'openai' または 'gemini'
 
 # Amazon Polly 設定
 POLLY_VOICE_ID_EN = os.environ.get('POLLY_VOICE_ID_EN', 'Matthew')  # 英語男性音声

@@ -21,6 +21,9 @@ Resources:
         Variables:
           S3_BUCKET_NAME: !Ref S3BucketName
           OPENAI_API_KEY: !Ref OpenAIApiKey
+          GOOGLE_API_KEY: !Ref GoogleApiKey
+          AI_PROVIDER: !Ref AIProvider
+          GEMINI_MODEL: !Ref GeminiModel
       Policies:
         - AmazonPollyFullAccess
         - S3FullAccessPolicy:
@@ -39,10 +42,26 @@ Parameters:
     Default: news-audio-files-kenchang198-dev
     Description: Name of the S3 bucket for storing audio files
   
+  
   OpenAIApiKey:
     Type: String
     NoEcho: true
-    Description: OpenAI API Key
+    Description: OpenAI API Key (Legacy Support)
+  
+  GoogleApiKey:
+    Type: String
+    NoEcho: true
+    Description: Google Gemini API Key
+
+  AIProvider:
+    Type: String
+    Default: gemini
+    Description: AI Provider (openai or gemini)
+
+  GeminiModel:
+    Type: String
+    Default: gemini-pro
+    Description: Gemini Model Name
 
 Outputs:
   NewsProcessingFunction:
