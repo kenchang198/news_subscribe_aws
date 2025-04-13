@@ -22,7 +22,8 @@ OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-3.5-turbo')
 
 # Google Gemini API 設定
 GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
-GEMINI_MODEL = os.environ.get('GEMINI_MODEL', 'gemini-pro')  # gemini-proをデフォルトに変更
+GEMINI_MODEL = os.environ.get(
+    'GEMINI_MODEL', 'gemini-pro')  # gemini-proをデフォルトに変更
 
 # AI プロバイダー設定
 AI_PROVIDER = os.environ.get('AI_PROVIDER', 'gemini')  # 'openai' または 'gemini'
@@ -33,6 +34,13 @@ POLLY_VOICE_ID_JA = os.environ.get('POLLY_VOICE_ID_JA', 'Takumi')   # 日本語�
 POLLY_ENGINE = os.environ.get('POLLY_ENGINE', 'neural')  # standard または neural
 
 # フィード設定
+# 複数のフィードを登録
+RSS_FEEDS = {
+    'hatena_it': 'https://b.hatena.ne.jp/hotentry/it.rss',
+    # 'business_insider': 'https://www.businessinsider.jp/feed/index.xml'
+}
+
+# レガシーサポート用
 MEDIUM_FEED_URL = os.environ.get(
     'MEDIUM_FEED_URL', 'https://medium.com/feed/tag/programming')
 
@@ -44,8 +52,11 @@ API_DELAY_SECONDS = float(os.environ.get('API_DELAY_SECONDS', '1.0'))
 # 環境に応じたパス設定
 if IS_LAMBDA:
     AUDIO_DIR = '/tmp'
+    S3_OBJECT_DATA_DIR = 'data'
 else:
     AUDIO_DIR = 'audio'
+    LOCAL_DATA_DIR = 'data'
+    S3_OBJECT_DATA_DIR = 'data'
 
 # ロギング設定
 LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')

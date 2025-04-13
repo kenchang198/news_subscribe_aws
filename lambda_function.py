@@ -3,14 +3,16 @@ import os
 import time
 import logging
 import shutil
-from src.fetch_medium import fetch_medium_articles
+from src.fetch_rss import fetch_rss
 from src.process_article import process_article
 from src.text_to_speech import generate_audio_for_article
 from src.s3_uploader import upload_to_s3
 from src.config import (
     MAX_ARTICLES_PER_FEED,
     AUDIO_DIR,
-    IS_LAMBDA
+    IS_LAMBDA,
+    RSS_FEEDS,
+    S3_BUCKET_NAME
 )
 
 # ロギング設定
@@ -61,7 +63,7 @@ def update_episodes_list(episode_data):
         "title": episode_data["title"],
         "created_at": episode_data["created_at"],
         "article_count": len(episode_data["articles"]),
-        "source": "Medium"
+        "source": "Japanese Tech News"
     }
 
     # 重複チェック
@@ -96,40 +98,68 @@ def update_episodes_list(episode_data):
 
 def lambda_handler(event, context):
     """
-    Medium記事を取得、要約・翻訳して音声を生成するLambda関数
+    複数の日本語RSSフィードから記事を取得、要約して日本語音声を生成するLambda関数
     """
-    logger.info("Medium記事処理を開始します...")
+    logger.info("日本のITニュース記事処理を開始します...")
 
+    all_articles = []
     processed_articles = []
 
     # 環境に応じた一時ディレクトリの設定
     os.makedirs(AUDIO_DIR, exist_ok=True)
 
     try:
-        # Mediumからフィードを取得
-        articles = fetch_medium_articles()
-
-        # 各記事を処理
-        for article in articles[:MAX_ARTICLES_PER_FEED]:
+        # 複数のRSSフィードから記事を取得
+        for source_id, feed_url in RSS_FEEDS.items():
+            logger.info(f"{source_id}からフィードを取得します...")
             try:
-                # 要約・翻訳
+                # RSSフィードから記事を取得
+                articles = fetch_rss(feed_url, IS_LAMBDA, S3_BUCKET_NAME)
+                
+                # ソース情報を追加
+                for article in articles:
+                    article["source_id"] = source_id
+                
+                all_articles.extend(articles)
+                logger.info(f"{source_id}から{len(articles)}件の記事を取得しました")
+            except Exception as e:
+                logger.error(f"{source_id}のフィード取得中にエラー: {str(e)}", exc_info=True)
+        
+        # 最新の記事を優先（公開日でソート）
+        all_articles.sort(key=lambda x: x.get("published", ""), reverse=True)
+        
+        # 各サイトから最大記事数を制限
+        articles_per_source = {}
+        selected_articles = []
+        
+        for article in all_articles:
+            source_id = article.get("source_id", "unknown")
+            if source_id not in articles_per_source:
+                articles_per_source[source_id] = 0
+            
+            if articles_per_source[source_id] < MAX_ARTICLES_PER_FEED:
+                selected_articles.append(article)
+                articles_per_source[source_id] += 1
+        
+        logger.info(f"合計{len(selected_articles)}件の記事を処理対象としました")
+
+        # 選択された記事を処理
+        for article in selected_articles:
+            try:
+                # 日本語要約のみ
                 processed = process_article(article)
 
-                # 音声生成
+                # 日本語音声のみ生成
                 processed = generate_audio_for_article(processed)
 
                 # Lambda環境の場合はS3にアップロード
-                if IS_LAMBDA and "english_audio_file" in processed and "japanese_audio_file" in processed:
-                    english_s3_path = f"audio/english/{os.path.basename(processed['english_audio_file'])}"
+                if IS_LAMBDA and "japanese_audio_file" in processed:
                     japanese_s3_path = f"audio/japanese/{os.path.basename(processed['japanese_audio_file'])}"
 
-                    processed["english_audio_url"] = upload_to_s3(
-                        processed["english_audio_file"], english_s3_path)
                     processed["japanese_audio_url"] = upload_to_s3(
                         processed["japanese_audio_file"], japanese_s3_path)
 
                     # 一時ファイルのパスは削除（不要になったため）
-                    del processed["english_audio_file"]
                     del processed["japanese_audio_file"]
 
                 # 処理済み記事を追加
@@ -141,7 +171,7 @@ def lambda_handler(event, context):
                     f"記事「{article['title']}」の処理中にエラー: {str(e)}", exc_info=True)
 
     except Exception as e:
-        logger.error(f"Mediumフィード取得中にエラー: {str(e)}", exc_info=True)
+        logger.error(f"記事取得・処理中にエラー: {str(e)}", exc_info=True)
 
     # エピソードの生成（今日の日付で）
     if processed_articles:
@@ -154,7 +184,7 @@ def lambda_handler(event, context):
                 "title": f"Tech News ({today})",
                 "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
                 "articles": processed_articles,
-                "source": "Medium"
+                "source": "Japanese Tech News"
             }
 
             # JSONファイルとして保存

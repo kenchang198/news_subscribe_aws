@@ -9,11 +9,11 @@ ITニュース記事の要約と音声合成による配信システム
 
 ## 機能
 
-- RSSフィードからニュース記事の取得
-- AI（Google Gemini APIまたはOpenAI API）による記事の要約
-- 要約の多言語サポート（英語・日本語）
-- Amazon Pollyによる音声合成
+- 日本語RSSフィードからニュース記事の取得
+- AI（Google Gemini APIまたはOpenAI API）による記事の日本語要約
+- Amazon Pollyによる日本語音声合成
 - S3への音声ファイル保存
+- リソース最適化（英語処理を省略）
 
 ## 技術スタック
 
@@ -32,6 +32,18 @@ ITニュース記事の要約と音声合成による配信システム
 - AWS CLI がインストールされていること
 - AWS SAM CLI がインストールされていること
 - Python 3.9 以上がインストールされていること
+
+#### pyenvをお使いの場合
+
+pyenvでPythonのバージョンを管理している場合は、以下のコマンドでPythonのバージョンを設定してから実行してください：
+
+```bash
+# Pythonのバージョンを指定（例：Python 3.11.8）
+pyenv global 3.11.8
+
+# バージョンを確認
+python --version
+```
 
 ### ローカル開発環境のセットアップ
 
@@ -106,7 +118,11 @@ POLLY_ENGINE=neural
 ## ローカルでの実行
 
 ```bash
-python -m src.main
+# run_local.shを使用する場合
+./run_local.sh
+
+# または直接実行する場合
+python lambda_function.py
 ```
 
 ## AWS へのデプロイ
