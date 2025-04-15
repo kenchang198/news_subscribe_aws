@@ -39,42 +39,33 @@ def synthesize_japanese_speech(text, output_filename, voice_id="Takumi"):
         return None
 
 
-def generate_audio_for_article(article):
-    """
-    日本語の要約音声を生成（英語は省略）
-    """
-    logger.info(f"音声生成開始: {article['title']}")
+def generate_audio_for_article(article, episode_id, index):
+    logger.info(f"音声生成開始 ({episode_id}, Index {index+1}): {article['title']}")
 
     try:
-        # ディレクトリが存在することを確認
         os.makedirs(AUDIO_DIR, exist_ok=True)
 
-        # 英語音声は省略（リソース節約のため）
-        
-        # 日本語音声生成
-        japanese_output_filename = f"{AUDIO_DIR}/{article['id']}_ja.mp3"
+        # 新しい命名規則でファイル名を生成 (インデックスは1始まり)
+        audio_base_filename = f"{episode_id}_{index + 1}_ja.mp3"
+        japanese_output_filename = os.path.join(AUDIO_DIR, audio_base_filename)
+
         japanese_audio = synthesize_japanese_speech(
             article["japanese_summary"],
             japanese_output_filename
         )
 
-        # 音声ファイルのURLを記事情報に追加
-        # ローカル環境ではファイルパス、Lambda環境ではS3 URLになる
         if japanese_audio:
             if IS_LAMBDA:
-                # Lambda環境では後でS3にアップロードするための印をつける
                 article["japanese_audio_file"] = japanese_audio
             else:
-                # ローカル環境ではファイルパスをそのまま使用
                 article["japanese_audio_url"] = japanese_audio
-
-            logger.info(f"音声生成完了: {article['title']}")
+            logger.info(f"音声生成完了 ({episode_id}, Index {index+1})")
         else:
-            logger.error(f"音声生成に失敗しました: {article['title']}")
+            logger.error(f"音声生成失敗 ({episode_id}, Index {index+1})")
 
         return article
     except Exception as e:
-        logger.error(f"音声生成中にエラー: {str(e)}")
+        logger.error(f"音声生成中にエラー ({episode_id}, Index {index+1}): {str(e)}")
         raise
 
 
@@ -93,7 +84,7 @@ if __name__ == "__main__":
         article = json.load(f)
 
     # 音声生成
-    article_with_audio = generate_audio_for_article(article)
+    article_with_audio = generate_audio_for_article(article, "episode1", 0)
 
     # 結果を出力
     print(f"英語音声ファイル: {article_with_audio.get('english_audio_url', 'なし')}")

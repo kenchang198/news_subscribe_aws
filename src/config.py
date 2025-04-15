@@ -1,8 +1,36 @@
 import os
 from dotenv import load_dotenv
+import logging  # logging をインポート
 
-# .env ファイルから環境変数を読み込み
-load_dotenv()
+# --- .env ファイルのパスを明示的に指定 ---
+# config.py の場所を基準に .env ファイルの絶対パスを組み立てる
+# (プロジェクトルートに .env があると仮定)
+dotenv_path = os.path.abspath(os.path.join(
+    os.path.dirname(__file__), '..', '.env'))
+logger_config_path = logging.getLogger(__name__ + ".config_path")
+logger_config_path.info(f"Attempting to load .env file from: {dotenv_path}")
+
+# .env ファイルから環境変数を読み込み (パスを明示的に指定)
+# override=True は、もし複数回 load_dotenv が呼ばれた場合に上書きを許可する
+dotenv_loaded = load_dotenv(dotenv_path=dotenv_path, override=True)
+if not dotenv_loaded:
+    logger_config_path.warning(
+        f".env file specified but not loaded from: {dotenv_path}")
+# --- ここまで ---
+
+# --- デバッグログ追加 --- #
+logger_config = logging.getLogger(__name__ + ".config")  # config 用ロガー
+loaded_google_key = os.environ.get('GOOGLE_API_KEY')
+if loaded_google_key:
+    logger_config.info(
+        "src/config.py: GOOGLE_API_KEY loaded from environment.")
+    # セキュリティのためキーの一部のみ表示
+    logger_config.info(
+        f"src/config.py: GOOGLE_API_KEY starts with: {loaded_google_key[:5]}...")
+else:
+    logger_config.warning(
+        "src/config.py: GOOGLE_API_KEY not found in environment after load_dotenv()!")
+# --- デバッグログ追加 ここまで --- #
 
 # Lambda環境かどうかを判定
 IS_LAMBDA = os.environ.get('AWS_LAMBDA_FUNCTION_NAME') is not None
@@ -21,7 +49,7 @@ OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-3.5-turbo')
 
 # Google Gemini API 設定
-GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
+GOOGLE_API_KEY = loaded_google_key
 GEMINI_MODEL = os.environ.get(
     'GEMINI_MODEL', 'gemini-pro')  # gemini-proをデフォルトに変更
 

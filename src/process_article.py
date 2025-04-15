@@ -52,11 +52,20 @@ def summarize_japanese_article(article_url, article_title, article_content):
     logger.info(f"日本語要約開始: {article_title[:30]}...")
 
     if AI_PROVIDER == 'gemini' and GOOGLE_API_KEY:
+        logger.info("AI Provider: Gemini (Google API Key found)")
         return summarize_japanese_with_gemini(article_url, article_title, article_content)
-    elif OPENAI_API_KEY:
+    elif AI_PROVIDER == 'openai' and OPENAI_API_KEY:
+        logger.info("AI Provider: OpenAI (OpenAI API Key found)")
         return summarize_japanese_with_openai(article_url, article_title, article_content)
     else:
-        error_msg = "有効なAI APIキーが設定されていません。"
+        if not GOOGLE_API_KEY and not OPENAI_API_KEY:
+            error_msg = "有効なAI APIキーが設定されていません (Google or OpenAI)。"
+        elif AI_PROVIDER == 'gemini' and not GOOGLE_API_KEY:
+            error_msg = f"AI_PROVIDER が 'gemini' ですが、GOOGLE_API_KEY が設定されていません。"
+        elif AI_PROVIDER == 'openai' and not OPENAI_API_KEY:
+            error_msg = f"AI_PROVIDER が 'openai' ですが、OPENAI_API_KEY が設定されていません。"
+        else:
+            error_msg = f"不明な AI_PROVIDER '{AI_PROVIDER}' または関連するAPIキーがありません。"
         logger.error(error_msg)
         return f"要約エラー: {error_msg}"
 
@@ -124,11 +133,20 @@ def translate_to_japanese(english_text):
     logger.info("日本語翻訳開始")
 
     if AI_PROVIDER == 'gemini' and GOOGLE_API_KEY:
+        logger.info("AI Provider for Translation: Gemini")
         return translate_with_gemini(english_text)
-    elif OPENAI_API_KEY:
+    elif AI_PROVIDER == 'openai' and OPENAI_API_KEY:
+        logger.info("AI Provider for Translation: OpenAI")
         return translate_with_openai(english_text)
     else:
-        error_msg = "有効なAI APIキーが設定されていません。"
+        if not GOOGLE_API_KEY and not OPENAI_API_KEY:
+            error_msg = "有効なAI APIキーが設定されていません (Google or OpenAI)。"
+        elif AI_PROVIDER == 'gemini' and not GOOGLE_API_KEY:
+            error_msg = f"AI_PROVIDER が 'gemini' ですが、GOOGLE_API_KEY が設定されていません。"
+        elif AI_PROVIDER == 'openai' and not OPENAI_API_KEY:
+            error_msg = f"AI_PROVIDER が 'openai' ですが、OPENAI_API_KEY が設定されていません。"
+        else:
+            error_msg = f"不明な AI_PROVIDER '{AI_PROVIDER}' または関連するAPIキーがありません。"
         logger.error(error_msg)
         return f"翻訳エラー: {error_msg}"
 
