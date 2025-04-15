@@ -4,10 +4,11 @@ import logging
 import openai
 import google.generativeai as genai
 from src.config import (
-    IS_LAMBDA, 
-    OPENAI_API_KEY, 
-    GOOGLE_API_KEY, 
-    GEMINI_MODEL, 
+    IS_LAMBDA,
+    OPENAI_API_KEY,
+    GOOGLE_API_KEY,
+    GEMINI_MODEL,
+    OPENAI_MODEL,  # OpenAIモデル設定をインポート
     AI_PROVIDER
 )
 
@@ -23,13 +24,33 @@ if OPENAI_API_KEY:
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
 
+# 共通プロンプトテンプレート
+JAPANESE_SUMMARY_PROMPT_TEMPLATE = """
+以下の記事を要約してください。
+
+【要約のガイドライン】
+• 記事の主要なポイントを全て含める
+• 最低でも8文以上、300-400字以上※の長さで要約すること（これは必須条件です）
+• 音声で聞きやすいよう、自然な日本語で書く
+• 技術用語はそのまま使用し、簡潔に説明を加える
+• 記事の主張や結論を明確に伝える
+• 内容をどうしても短くできない場合は、より詳細に説明することを優先する
+• 箇条書きではなく、文章として構成する
+• 記事の冒頭に「この記事は〜についてです」などの導入文を入れる
+• 最後に結論や今後の展望について述べる
+タイトル: {article_title}
+URL: {article_url}
+内容: {article_content}
+※元の記事の文字数がこれより少ない場合や内容が短い場合、無理にこちらの文字数に合わせる必要はありません。
+"""
+
 
 def summarize_japanese_article(article_url, article_title, article_content):
     """
     日本語記事を直接要約する（AIプロバイダーを自動選択）
     """
     logger.info(f"日本語要約開始: {article_title[:30]}...")
-    
+
     if AI_PROVIDER == 'gemini' and GOOGLE_API_KEY:
         return summarize_japanese_with_gemini(article_url, article_title, article_content)
     elif OPENAI_API_KEY:
@@ -46,24 +67,21 @@ def summarize_japanese_with_openai(article_url, article_title, article_content):
     """
     logger.info("OpenAI APIで日本語要約処理")
 
-    prompt = f"""
-    以下の記事を簡潔に要約してください。
-    重要なポイントを押さえ、300文字程度でまとめてください。
-    コードが含まれている場合は「コード例が含まれています」と記載し、実際のコードは含めないでください。
-    
-    タイトル: {article_title}
-    URL: {article_url}
-    内容: {article_content}
-    """
+    # 共通プロンプトを使用
+    prompt = JAPANESE_SUMMARY_PROMPT_TEMPLATE.format(
+        article_title=article_title,
+        article_url=article_url,
+        article_content=article_content
+    )
 
     try:
         response = openai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model=OPENAI_MODEL,  # config.pyで指定されたモデルを使用
             messages=[
-                {"role": "system", "content": "あなたはITニュースを簡潔に要約する専門家です。"},
+                {"role": "system", "content": "あなたはITニュースを音声で聞きやすく要約する専門家です。技術的な内容を正確に、わかりやすく伝えることを心がけてください。"},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=800
+            max_tokens=2000  # より長い要約のために増加
         )
 
         summary = response.choices[0].message.content.strip()
@@ -80,20 +98,17 @@ def summarize_japanese_with_gemini(article_url, article_title, article_content):
     """
     logger.info("Gemini APIで日本語要約処理")
 
-    prompt = f"""
-    以下の記事を簡潔に要約してください。
-    重要なポイントを押さえ、300文字程度でまとめてください。
-    コードが含まれている場合は「コード例が含まれています」と記載し、実際のコードは含めないでください。
-    
-    タイトル: {article_title}
-    URL: {article_url}
-    内容: {article_content}
-    """
+    # 共通プロンプトを使用
+    prompt = JAPANESE_SUMMARY_PROMPT_TEMPLATE.format(
+        article_title=article_title,
+        article_url=article_url,
+        article_content=article_content
+    )
 
     try:
         model = genai.GenerativeModel(GEMINI_MODEL)
         response = model.generate_content(prompt)
-        
+
         summary = response.text.strip()
         logger.info(f"Gemini 日本語要約完了: {len(summary)}文字")
         return summary
@@ -107,7 +122,7 @@ def translate_to_japanese(english_text):
     英語テキストを日本語に翻訳する（AIプロバイダーを自動選択）
     """
     logger.info("日本語翻訳開始")
-    
+
     if AI_PROVIDER == 'gemini' and GOOGLE_API_KEY:
         return translate_with_gemini(english_text)
     elif OPENAI_API_KEY:
@@ -134,12 +149,12 @@ def translate_with_openai(english_text):
 
     try:
         response = openai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model=OPENAI_MODEL,  # config.pyで指定されたモデルを使用
             messages=[
                 {"role": "system", "content": "You are an expert translator specializing in technical content."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=800
+            max_tokens=2000  # より長い要約のために増加
         )
 
         translation = response.choices[0].message.content.strip()
@@ -167,7 +182,7 @@ def translate_with_gemini(english_text):
     try:
         model = genai.GenerativeModel(GEMINI_MODEL)
         response = model.generate_content(prompt)
-        
+
         translation = response.text.strip()
         logger.info(f"Gemini 日本語翻訳完了: {len(translation)}文字")
         return translation
@@ -196,9 +211,9 @@ def process_article(article):
 
         # 記事情報を更新
         article["japanese_summary"] = japanese_summary
-        
+
         # APIリソース消費を削減するため英語関連の処理を完全に省略
-        
+
         # AI プロバイダー情報を追加
         article["ai_provider"] = AI_PROVIDER
 

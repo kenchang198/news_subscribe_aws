@@ -46,7 +46,8 @@ MEDIUM_FEED_URL = os.environ.get(
 
 # アプリケーション設定
 MAX_ARTICLES_PER_FEED = int(os.environ.get('MAX_ARTICLES_PER_FEED', '5'))
-SUMMARY_MAX_LENGTH = int(os.environ.get('SUMMARY_MAX_LENGTH', '300'))
+SUMMARY_MAX_LENGTH = int(os.environ.get(
+    'SUMMARY_MAX_LENGTH', '800'))  # 要約の長さを増やす
 API_DELAY_SECONDS = float(os.environ.get('API_DELAY_SECONDS', '1.0'))
 
 # 環境に応じたパス設定
