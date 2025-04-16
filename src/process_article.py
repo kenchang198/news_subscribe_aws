@@ -25,7 +25,7 @@ if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
 
 # 共通プロンプトテンプレート
-JAPANESE_SUMMARY_PROMPT_TEMPLATE = """
+SUMMARY_PROMPT_TEMPLATE = """
 以下の記事を要約してください。
 
 【要約のガイドライン】
@@ -44,19 +44,21 @@ URL: {article_url}
 ※元の記事の文字数がこれより少ない場合や内容が短い場合、無理にこちらの文字数に合わせる必要はありません。
 """
 
+MAX_RETRIES = 3
 
-def summarize_japanese_article(article_url, article_title, article_content):
+
+def summarize_article(article_url, article_title, article_content):
     """
-    日本語記事を直接要約する（AIプロバイダーを自動選択）
+    記事を直接要約する（AIプロバイダーを自動選択）
     """
-    logger.info(f"日本語要約開始: {article_title[:30]}...")
+    logger.info(f"要約開始: {article_title[:30]}...")
 
     if AI_PROVIDER == 'gemini' and GOOGLE_API_KEY:
         logger.info("AI Provider: Gemini (Google API Key found)")
-        return summarize_japanese_with_gemini(article_url, article_title, article_content)
+        return summarize_with_gemini(article_url, article_title, article_content)
     elif AI_PROVIDER == 'openai' and OPENAI_API_KEY:
         logger.info("AI Provider: OpenAI (OpenAI API Key found)")
-        return summarize_japanese_with_openai(article_url, article_title, article_content)
+        return summarize_with_openai(article_url, article_title, article_content)
     else:
         if not GOOGLE_API_KEY and not OPENAI_API_KEY:
             error_msg = "有効なAI APIキーが設定されていません (Google or OpenAI)。"
@@ -70,14 +72,14 @@ def summarize_japanese_article(article_url, article_title, article_content):
         return f"要約エラー: {error_msg}"
 
 
-def summarize_japanese_with_openai(article_url, article_title, article_content):
+def summarize_with_openai(article_url, article_title, article_content):
     """
-    OpenAI APIを使用して日本語記事を直接要約する
+    OpenAI APIを使用して記事を直接要約する
     """
-    logger.info("OpenAI APIで日本語要約処理")
+    logger.info("OpenAI APIで要約処理")
 
     # 共通プロンプトを使用
-    prompt = JAPANESE_SUMMARY_PROMPT_TEMPLATE.format(
+    prompt = SUMMARY_PROMPT_TEMPLATE.format(
         article_title=article_title,
         article_url=article_url,
         article_content=article_content
@@ -85,30 +87,30 @@ def summarize_japanese_with_openai(article_url, article_title, article_content):
 
     try:
         response = openai_client.chat.completions.create(
-            model=OPENAI_MODEL,  # config.pyで指定されたモデルを使用
+            model=OPENAI_MODEL,
             messages=[
                 {"role": "system", "content": "あなたはITニュースを音声で聞きやすく要約する専門家です。技術的な内容を正確に、わかりやすく伝えることを心がけてください。"},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=2000  # より長い要約のために増加
+            max_tokens=2000
         )
 
         summary = response.choices[0].message.content.strip()
-        logger.info(f"OpenAI 日本語要約完了: {len(summary)}文字")
+        logger.info(f"OpenAI 要約完了: {len(summary)}文字")
         return summary
     except Exception as e:
-        logger.error(f"OpenAI 日本語要約中にエラー: {str(e)}")
+        logger.error(f"OpenAI 要約中にエラー: {str(e)}")
         return f"要約エラー: Error code: {type(e).__name__} - {str(e)}"
 
 
-def summarize_japanese_with_gemini(article_url, article_title, article_content):
+def summarize_with_gemini(article_url, article_title, article_content):
     """
-    Google Gemini APIを使用して日本語記事を直接要約する
+    Google Gemini APIを使用して記事を直接要約する
     """
-    logger.info("Gemini APIで日本語要約処理")
+    logger.info("Gemini APIで要約処理")
 
     # 共通プロンプトを使用
-    prompt = JAPANESE_SUMMARY_PROMPT_TEMPLATE.format(
+    prompt = SUMMARY_PROMPT_TEMPLATE.format(
         article_title=article_title,
         article_url=article_url,
         article_content=article_content
@@ -119,18 +121,18 @@ def summarize_japanese_with_gemini(article_url, article_title, article_content):
         response = model.generate_content(prompt)
 
         summary = response.text.strip()
-        logger.info(f"Gemini 日本語要約完了: {len(summary)}文字")
+        logger.info(f"Gemini 要約完了: {len(summary)}文字")
         return summary
     except Exception as e:
-        logger.error(f"Gemini 日本語要約中にエラー: {str(e)}")
+        logger.error(f"Gemini 要約中にエラー: {str(e)}")
         return f"要約エラー: Error code: {type(e).__name__} - {str(e)}"
 
 
-def translate_to_japanese(english_text):
+def translate_text(english_text):
     """
     英語テキストを日本語に翻訳する（AIプロバイダーを自動選択）
     """
-    logger.info("日本語翻訳開始")
+    logger.info("翻訳開始")
 
     if AI_PROVIDER == 'gemini' and GOOGLE_API_KEY:
         logger.info("AI Provider for Translation: Gemini")
@@ -155,31 +157,31 @@ def translate_with_openai(english_text):
     """
     OpenAI APIを使用して英語テキストを日本語に翻訳する
     """
-    logger.info("OpenAI APIで日本語翻訳処理")
+    logger.info("OpenAI APIで翻訳処理")
 
     prompt = f"""
     Translate the following English text to natural Japanese.
     Ensure that technical terms are translated accurately.
-    
+
     English:
     {english_text}
     """
 
     try:
         response = openai_client.chat.completions.create(
-            model=OPENAI_MODEL,  # config.pyで指定されたモデルを使用
+            model=OPENAI_MODEL,
             messages=[
                 {"role": "system", "content": "You are an expert translator specializing in technical content."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=2000  # より長い要約のために増加
+            max_tokens=2000
         )
 
         translation = response.choices[0].message.content.strip()
-        logger.info(f"OpenAI 日本語翻訳完了: {len(translation)}文字")
+        logger.info(f"OpenAI 翻訳完了: {len(translation)}文字")
         return translation
     except Exception as e:
-        logger.error(f"OpenAI 日本語翻訳中にエラー: {str(e)}")
+        logger.error(f"OpenAI 翻訳中にエラー: {str(e)}")
         return f"翻訳エラー: Error code: {type(e).__name__} - {str(e)}"
 
 
@@ -187,12 +189,12 @@ def translate_with_gemini(english_text):
     """
     Google Gemini APIを使用して英語テキストを日本語に翻訳する
     """
-    logger.info("Gemini APIで日本語翻訳処理")
+    logger.info("Gemini APIで翻訳処理")
 
     prompt = f"""
     Translate the following English text to natural Japanese.
     Ensure that technical terms are translated accurately.
-    
+
     English:
     {english_text}
     """
@@ -202,10 +204,10 @@ def translate_with_gemini(english_text):
         response = model.generate_content(prompt)
 
         translation = response.text.strip()
-        logger.info(f"Gemini 日本語翻訳完了: {len(translation)}文字")
+        logger.info(f"Gemini 翻訳完了: {len(translation)}文字")
         return translation
     except Exception as e:
-        logger.error(f"Gemini 日本語翻訳中にエラー: {str(e)}")
+        logger.error(f"Gemini 翻訳中にエラー: {str(e)}")
         return f"翻訳エラー: Error code: {type(e).__name__} - {str(e)}"
 
 
@@ -216,21 +218,23 @@ def process_article(article):
     logger.info(f"記事処理開始: {article['title'][:30]}...")
 
     try:
-        # 日本語で直接要約
-        japanese_summary = summarize_japanese_article(
+        # 要約
+        summary = summarize_article(
             article["link"],
             article["title"],
             article["summary"]
         )
 
         # エラーメッセージが返ってきた場合は処理を続ける（フォールバック）
-        if japanese_summary.startswith("要約エラー:"):
-            logger.warning("日本語要約でエラーが発生しましたが、処理を続行します")
+        if summary.startswith("要約エラー:"):
+            logger.warning("要約でエラーが発生しましたが、処理を続行します")
 
         # 記事情報を更新
-        article["japanese_summary"] = japanese_summary
+        article["summary"] = summary
 
         # APIリソース消費を削減するため英語関連の処理を完全に省略
+        article["english_summary"] = "Not generated"
+        article["english_audio_url"] = None
 
         # AI プロバイダー情報を追加
         article["ai_provider"] = AI_PROVIDER
@@ -240,7 +244,7 @@ def process_article(article):
     except Exception as e:
         logger.error(f"記事処理中にエラー: {str(e)}")
         # 基本情報だけでも記事を返す
-        article["japanese_summary"] = f"記事処理エラー: {str(e)}"
+        article["summary"] = f"記事処理エラー: {str(e)}"
         article["ai_provider"] = "error"
         return article
 
@@ -265,8 +269,8 @@ if __name__ == "__main__":
 
         print("英語要約:")
         print(processed["english_summary"])
-        print("\n日本語要約:")
-        print(processed["japanese_summary"])
+        print("\n要約:")
+        print(processed["summary"])
 
         # 処理結果をファイルに保存
         with open("data/processed_article.json", "w", encoding="utf-8") as f:

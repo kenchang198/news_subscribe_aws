@@ -140,7 +140,7 @@ def update_episodes_list(episode_data):
         "title": episode_data["title"],
         "created_at": episode_data["created_at"],
         "article_count": len(episode_data["articles"]),
-        "source": "Japanese Tech News"
+        "source": "Tech News"
     }
 
     # 重複チェック
@@ -251,15 +251,16 @@ def lambda_handler(event, context):
                 processed = process_article(article)
                 processed = generate_audio_for_article(processed, today, idx)
 
-                if IS_LAMBDA and "japanese_audio_file" in processed:
+                # 音声合成とS3アップロード (Lambda環境でのみ実行)
+                if IS_LAMBDA and "audio_file" in processed:
                     # ★ S3パス生成も新しいファイル名基準に
                     # os.path.basename はフルパスからファイル名部分を取得する
                     audio_filename = os.path.basename(
-                        processed['japanese_audio_file'])
-                    japanese_s3_path = f"audio/japanese/{audio_filename}"
-                    processed["japanese_audio_url"] = upload_to_s3(
-                        processed["japanese_audio_file"], japanese_s3_path)
-                    del processed["japanese_audio_file"]
+                        processed['audio_file'])
+                    s3_path = f"audio/{audio_filename}"
+                    processed["audio_url"] = upload_to_s3(
+                        processed["audio_file"], s3_path)
+                    del processed["audio_file"]
 
                 processed_articles.append(processed)
                 logger.info(
@@ -290,7 +291,7 @@ def lambda_handler(event, context):
                 "title": f"Tech News ({today})",
                 "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
                 "articles": processed_articles,
-                "source": "Japanese Tech News"
+                "source": "Tech News"
             }
 
             # JSONファイルとして保存
