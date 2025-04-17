@@ -16,8 +16,7 @@ from src.config import (
     AUDIO_DIR,
     IS_LAMBDA,
     RSS_FEEDS,
-    S3_BUCKET_NAME,
-    S3_PREFIX  # S3_PREFIXをインポート
+    S3_BUCKET_NAME
 )
 
 # ロギング設定
