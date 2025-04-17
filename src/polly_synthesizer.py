@@ -51,7 +51,8 @@ def synthesize_and_upload_narrations(
         output_filename = f"{date_str}_{key}.{POLLY_OUTPUT_FORMAT}"
 
         if IS_LAMBDA:
-            s3_key = f"{s3_prefix}/narration/{output_filename}"
+            # s3_prefix は末尾に / を含む想定なので、ここでは / を付けない
+            s3_key = f"{s3_prefix}narration/{output_filename}"
             target_path_log = f"s3://{s3_bucket}/{s3_key}"
         else:
             local_path = os.path.join(local_narration_dir, output_filename)
