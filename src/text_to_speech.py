@@ -1,18 +1,21 @@
 import os
 import boto3
 import logging
-from src.config import IS_LAMBDA, AWS_REGION, AUDIO_DIR
+from src.config import IS_LAMBDA, AWS_REGION, AUDIO_DIR, POLLY_VOICE_ID
 
 # ロギング設定
 logger = logging.getLogger(__name__)
 
+# --- 定数 ---
+# 環境変数からVoice IDを取得 (デフォルトは Takumi) -> configからインポートするため削除
+# POLLY_VOICE_ID = os.environ.get("POLLY_VOICE_ID", "Takumi")
 
 # 英語音声合成は不要なため、関数を削除
 
 
-def synthesize_speech(text, output_filename, voice_id="Takumi"):
+def synthesize_speech(text, output_filename, voice_id=POLLY_VOICE_ID):
     """AWS Pollyを使用してテキストから音声を合成する"""
-    logger.info("音声合成開始")
+    logger.info(f"音声合成開始 (Voice: {voice_id})")
 
     try:
         polly_client = boto3.client('polly', region_name=AWS_REGION)
