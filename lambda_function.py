@@ -3,16 +3,21 @@ import os
 import time
 import logging
 import shutil
+import datetime  # datetimeをインポート
 from src.fetch_rss import fetch_rss
 from src.process_article import process_article
 from src.text_to_speech import generate_audio_for_article
 from src.s3_uploader import upload_to_s3
+# ナレーション関連をインポート
+from src.narration_generator import generate_narration_texts
+from src.polly_synthesizer import synthesize_and_upload_narrations
 from src.config import (
     MAX_ARTICLES_PER_FEED,
     AUDIO_DIR,
     IS_LAMBDA,
     RSS_FEEDS,
-    S3_BUCKET_NAME
+    S3_BUCKET_NAME,
+    S3_PREFIX  # S3_PREFIXをインポート
 )
 
 # ロギング設定
@@ -316,6 +321,95 @@ def lambda_handler(event, context):
             logger.info(f"エピソードを生成しました: {today}")
         except Exception as e:
             logger.error(f"エピソード生成中にエラー: {str(e)}", exc_info=True)
+
+    # --- ナレーション生成・合成処理 ---
+    narration_s3_keys = {}
+    if processed_articles:  # 処理された記事がある場合のみナレーション生成
+        try:
+            logger.info("ナレーション音声の生成を開始します...")
+            # 日付を取得 (Lambda実行時の日付)
+            episode_date = datetime.date.today()
+            # ナレーションテキスト生成
+            narration_texts = generate_narration_texts(
+                episode_date, processed_articles)
+            # 音声合成とS3アップロード
+            narration_s3_keys = synthesize_and_upload_narrations(
+                narrations=narration_texts,
+                episode_date=episode_date,
+                s3_bucket=S3_BUCKET_NAME,
+                s3_prefix=S3_PREFIX
+            )
+            logger.info("ナレーション音声の生成・アップロードが完了しました。")
+        except Exception as e:
+            logger.error(f"ナレーション生成中にエラーが発生しました: {e}", exc_info=True)
+            # ナレーション生成エラーは致命的ではないため、処理を続行
+    else:
+        logger.info("処理対象の記事がなかったため、ナレーション生成をスキップします。")
+    # --- ナレーション生成・合成処理 ここまで ---
+
+    # メタデータ生成
+    # today = time.strftime("%Y-%m-%d") # episode_id は既に決定済み
+    # episode_id = today # 変数名を統一
+    # S3 URL を構築するヘルパー関数 (リージョン取得が必要な場合あり)
+    def build_s3_url(s3_key):
+        # シンプルな形式 (必要に応じてリージョンを config などから取得して含める)
+        # from src.config import AWS_REGION
+        # return f"https://{S3_BUCKET_NAME}.s3.{AWS_REGION}.amazonaws.com/{s3_key}"
+        if s3_key:
+            return f"https://{S3_BUCKET_NAME}.s3.amazonaws.com/{s3_key}"
+        return None
+
+    intro_s3_key = narration_s3_keys.get('intro')
+    outro_s3_key = narration_s3_keys.get('outro')
+
+    episode_data = {
+        "episode_id": today,
+        "title": f"Tech News ({today})",
+        "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "intro_audio_url": build_s3_url(intro_s3_key),
+        "outro_audio_url": build_s3_url(outro_s3_key),
+        "articles": []
+    }
+
+    for idx, article in enumerate(processed_articles):
+        article_data = {
+            "id": article["id"],
+            "title": article["title"],
+            "summary": article["summary"],
+            # audio_urlはS3アップロード時に設定される想定
+            "audio_url": article.get("audio_url"),
+            # ★ ナレーションURLを追加
+            "intro_audio_url": build_s3_url(narration_s3_keys.get(f'transition_{idx+1}')),
+            "duration": article.get("duration"),  # 必要であれば
+            "original_url": article.get("original_url"),
+            "published": article.get("published"),
+            "source_id": article.get("source_id", "unknown")
+        }
+        episode_data["articles"].append(article_data)
+
+    # エピソードリストを更新
+    update_episodes_list(episode_data)
+
+    # 生成されたメタデータをS3に保存
+    metadata_filename = f"metadata_{today}.json"
+    metadata_s3_key = f"data/{metadata_filename}"
+    if IS_LAMBDA:
+        # 一時ファイルに書き出し
+        tmp_path = f"{AUDIO_DIR}/{metadata_filename}"
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(episode_data, f, ensure_ascii=False, indent=2)
+        # S3 にアップロード
+        metadata_s3_url = upload_to_s3(tmp_path, metadata_s3_key)
+        logger.info(f"メタデータをS3に保存しました: {metadata_s3_url}")
+    else:
+        # ローカルに保存
+        os.makedirs("data", exist_ok=True)
+        local_metadata_path = f"data/{metadata_filename}"
+        with open(local_metadata_path, "w", encoding="utf-8") as f:
+            json.dump(episode_data, f, ensure_ascii=False, indent=2)
+        logger.info(f"メタデータをローカルに保存しました: {local_metadata_path}")
+
+    logger.info("Lambda処理完了")
 
     return {
         "statusCode": 200,
