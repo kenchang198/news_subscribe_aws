@@ -6,9 +6,6 @@ from src.config import IS_LAMBDA, AWS_REGION, AUDIO_DIR, POLLY_VOICE_ID
 # ロギング設定
 logger = logging.getLogger(__name__)
 
-# --- 定数 ---
-# 環境変数からVoice IDを取得 (デフォルトは Takumi) -> configからインポートするため削除
-# POLLY_VOICE_ID = os.environ.get("POLLY_VOICE_ID", "Takumi")
 
 # 英語音声合成は不要なため、関数を削除
 
