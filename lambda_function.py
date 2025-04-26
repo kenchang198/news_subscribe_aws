@@ -85,8 +85,8 @@ def save_processed_ids(processed_ids):
         import boto3
         s3_client = boto3.client('s3')
         try:
-            # 一時ファイルに書き出し
-            tmp_path = f"{AUDIO_DIR}/{PROCESSED_IDS_FILENAME}"
+            # Lambda環境では一時ファイルを/tmpに作成
+            tmp_path = f"/tmp/{PROCESSED_IDS_FILENAME}"
             with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(ids_list, f)
             # S3 にアップロード
@@ -160,7 +160,7 @@ def update_episodes_list(episode_data):
     try:
         if IS_LAMBDA:
             # S3に保存
-            tmp_file = f"{AUDIO_DIR}/episodes_list.json"
+            tmp_file = f"/tmp/episodes_list.json"
             with open(tmp_file, "w", encoding="utf-8") as f:
                 json.dump(episodes_list, f, ensure_ascii=False, indent=2)
 
@@ -299,21 +299,27 @@ def lambda_handler(event, context):
                 "source": "Tech News"
             }
 
-            # JSONファイルとして保存
-            episode_filename = f"{AUDIO_DIR}/episode_{today}.json"
-            with open(episode_filename, "w", encoding="utf-8") as f:
-                json.dump(episode_data, f, ensure_ascii=False, indent=2)
-
-            # Lambda環境ではS3にアップロード、ローカル環境では適切なディレクトリにコピー
+            # ディレクトリ作成
             if IS_LAMBDA:
-                episode_s3_path = f"data/episodes/episode_{today}.json"
-                upload_to_s3(episode_filename, episode_s3_path)
-                logger.info(f"エピソードをS3に保存しました: {episode_s3_path}")
+                pass  # Lambda環境では必要ない
             else:
                 os.makedirs("data/episodes", exist_ok=True)
-                local_path = f"data/episodes/episode_{today}.json"
-                shutil.copy2(episode_filename, local_path)
-                logger.info(f"エピソードをローカルに保存しました: {local_path}")
+
+            # エピソードデータを保存
+            if IS_LAMBDA:
+                # Lambda環境では一時ファイルを/tmpに作成
+                tmp_episode_file = f"/tmp/episode_{today}.json"
+                with open(tmp_episode_file, "w", encoding="utf-8") as f:
+                    json.dump(episode_data, f, ensure_ascii=False, indent=2)
+                # S3にアップロード
+                episode_s3_path = f"data/episodes/episode_{today}.json"
+                upload_to_s3(tmp_episode_file, episode_s3_path)
+            else:
+                # ローカル環境では直接ファイルに書き込み
+                episode_filename = f"data/episodes/episode_{today}.json"
+                with open(episode_filename, "w", encoding="utf-8") as f:
+                    json.dump(episode_data, f, ensure_ascii=False, indent=2)
+                logger.info(f"エピソードをS3に保存しました: {episode_s3_path}")
 
             # エピソードリストも更新
             update_episodes_list(episode_data)
@@ -348,13 +354,7 @@ def lambda_handler(event, context):
     # --- ナレーション生成・合成処理 ここまで ---
 
     # メタデータ生成
-    # today = time.strftime("%Y-%m-%d") # episode_id は既に決定済み
-    # episode_id = today # 変数名を統一
-    # S3 URL を構築するヘルパー関数 (リージョン取得が必要な場合あり)
     def build_s3_url(s3_key):
-        # シンプルな形式 (必要に応じてリージョンを config などから取得して含める)
-        # from src.config import AWS_REGION
-        # return f"https://{S3_BUCKET_NAME}.s3.{AWS_REGION}.amazonaws.com/{s3_key}"
         if s3_key:
             return f"https://{S3_BUCKET_NAME}.s3.amazonaws.com/{s3_key}"
         return None
@@ -362,55 +362,104 @@ def lambda_handler(event, context):
     intro_s3_key = narration_s3_keys.get('intro')
     outro_s3_key = narration_s3_keys.get('outro')
 
-    episode_data = {
+    # シームレス再生用のメタデータ　（プレイリスト形式）
+    metadata_data = {
         "episode_id": today,
         "title": f"Tech News ({today})",
         "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
         "intro_audio_url": build_s3_url(intro_s3_key),
         "outro_audio_url": build_s3_url(outro_s3_key),
-        "articles": []
+        "playlist": [],  # プレイリスト形式での再生順序を定義
+        "sources": ["Tech News"]
     }
 
+    # エピソードデータ（APIで使用する記事情報）
+    episode_data = {
+        "episode_id": today,
+        "title": f"Tech News ({today})",
+        "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "articles": [],
+        "source": "Tech News"
+    }
+
+    # プレイリストの构築
+    # 1. イントロナレーション
+    if intro_s3_key:
+        metadata_data["playlist"].append({
+            "type": "intro",
+            "audio_url": build_s3_url(intro_s3_key)
+        })
+    
+    # 各記事のデータを処理
     for idx, article in enumerate(processed_articles):
         # URLが正しく設定されているか確認
         article_url = article.get("url") or article.get("link", "")
+        article_id = article["id"]
         
+        # エピソードデータ用（API用）
         article_data = {
-            "id": article["id"],  # 新しい短いID形式
+            "id": article_id,  # 新しい短いID形式
             "url": article_url,  # 元のURLを保持
             "title": article["title"],
             "summary": article["summary"],
-            # audio_urlはS3アップロード時に設定される想定
             "audio_url": article.get("audio_url"),
-            # ★ ナレーションURLを追加
-            "intro_audio_url": build_s3_url(narration_s3_keys.get(f'transition_{idx+1}')),
-            "duration": article.get("duration"),  # 必要であれば
+            "duration": article.get("duration"),
             "published": article.get("published"),
             "source_id": article.get("source_id", "unknown")
         }
         episode_data["articles"].append(article_data)
+        
+        # メタデータ用プレイリストの構築
+        # 2a. 記事イントロナレーション
+        transition_key = narration_s3_keys.get(f'transition_{idx+1}')
+        if transition_key:
+            metadata_data["playlist"].append({
+                "type": "article_intro",
+                "article_id": article_id,
+                "audio_url": build_s3_url(transition_key)
+            })
+        
+        # 2b. 記事本体
+        if article.get("audio_url"):
+            metadata_data["playlist"].append({
+                "type": "article",
+                "article_id": article_id,
+                "audio_url": article["audio_url"]
+            })
+    
+    # 3. エンディング
+    if outro_s3_key:
+        metadata_data["playlist"].append({
+            "type": "outro",
+            "audio_url": build_s3_url(outro_s3_key)
+        })
 
     # エピソードリストを更新
     update_episodes_list(episode_data)
 
-    # 生成されたメタデータをS3に保存
-    metadata_filename = f"metadata_{today}.json"
-    metadata_s3_key = f"data/{metadata_filename}"
+    # 生成されたメタデータを保存
+    # ディレクトリ作成
     if IS_LAMBDA:
-        # 一時ファイルに書き出し
-        tmp_path = f"{AUDIO_DIR}/{metadata_filename}"
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            json.dump(episode_data, f, ensure_ascii=False, indent=2)
-        # S3 にアップロード
-        metadata_s3_url = upload_to_s3(tmp_path, metadata_s3_key)
-        logger.info(f"メタデータをS3に保存しました: {metadata_s3_url}")
+        pass  # Lambda環境では必要ない
     else:
-        # ローカルに保存
-        os.makedirs("data", exist_ok=True)
-        local_metadata_path = f"data/{metadata_filename}"
+        os.makedirs("data/metadata", exist_ok=True)
+        
+    metadata_filename = f"metadata_{today}.json"
+    if IS_LAMBDA:
+        # Lambda環境では一時ファイルを/tmpに作成
+        tmp_metadata_file = f"/tmp/{metadata_filename}"
+        with open(tmp_metadata_file, "w", encoding="utf-8") as f:
+            json.dump(metadata_data, f, ensure_ascii=False, indent=2)
+        # S3 にアップロード
+        metadata_s3_key = f"data/metadata/{metadata_filename}"
+        metadata_s3_url = upload_to_s3(tmp_metadata_file, metadata_s3_key)
+        logger.info(f"再生用メタデータをS3に保存しました: {metadata_s3_url}")
+    else:
+        # ローカル環境では直接ファイルに書き込み
+        local_metadata_path = f"data/metadata/{metadata_filename}"
         with open(local_metadata_path, "w", encoding="utf-8") as f:
-            json.dump(episode_data, f, ensure_ascii=False, indent=2)
-        logger.info(f"メタデータをローカルに保存しました: {local_metadata_path}")
+            json.dump(metadata_data, f, ensure_ascii=False, indent=2)
+        logger.info(f"再生用メタデータをローカルに保存しました: {local_metadata_path}")
 
     logger.info("Lambda処理完了")
 
