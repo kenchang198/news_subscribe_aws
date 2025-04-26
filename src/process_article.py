@@ -3,6 +3,7 @@ import os
 import logging
 import openai
 import google.generativeai as genai
+from src.utils import create_article_id
 from src.config import (
     IS_LAMBDA,
     OPENAI_API_KEY,
@@ -227,6 +228,14 @@ def process_article(article):
         # エラーメッセージが返ってきた場合は処理を続ける（フォールバック）
         if summary.startswith("要約エラー:"):
             logger.warning("要約でエラーが発生しましたが、処理を続行します")
+            
+        # 記事IDを生成（URLベースのハッシュ）
+        article_url = article.get("link", "")
+        article_id = create_article_id(article_url)
+        
+        # 元のURLを保持しつつ、IDを短い一意の値に変更
+        article["url"] = article_url
+        article["id"] = article_id
 
         # 記事情報を更新
         article["summary"] = summary
@@ -238,7 +247,7 @@ def process_article(article):
         # AI プロバイダー情報を追加
         article["ai_provider"] = AI_PROVIDER
 
-        logger.info(f"記事処理完了: {article['title'][:30]}...")
+        logger.info(f"記事処理完了: {article['title'][:30]}...（ID: {article_id}）")
         return article
     except Exception as e:
         logger.error(f"記事処理中にエラー: {str(e)}")

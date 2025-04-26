@@ -372,8 +372,12 @@ def lambda_handler(event, context):
     }
 
     for idx, article in enumerate(processed_articles):
+        # URLが正しく設定されているか確認
+        article_url = article.get("url") or article.get("link", "")
+        
         article_data = {
-            "id": article["id"],
+            "id": article["id"],  # 新しい短いID形式
+            "url": article_url,  # 元のURLを保持
             "title": article["title"],
             "summary": article["summary"],
             # audio_urlはS3アップロード時に設定される想定
@@ -381,7 +385,6 @@ def lambda_handler(event, context):
             # ★ ナレーションURLを追加
             "intro_audio_url": build_s3_url(narration_s3_keys.get(f'transition_{idx+1}')),
             "duration": article.get("duration"),  # 必要であれば
-            "original_url": article.get("original_url"),
             "published": article.get("published"),
             "source_id": article.get("source_id", "unknown")
         }
