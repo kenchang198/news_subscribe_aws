@@ -72,6 +72,10 @@ RSS_FEEDS = {
 MEDIUM_FEED_URL = os.environ.get(
     'MEDIUM_FEED_URL', 'https://medium.com/feed/tag/programming')
 
+# API エンドポイント設定
+API_BASE_URL = os.environ.get('API_BASE_URL', 'https://your-api-gateway-url.execute-api.ap-northeast-1.amazonaws.com/dev')
+LOCAL_API_URL = os.environ.get('LOCAL_API_URL', 'http://localhost:5001')
+
 # アプリケーション設定
 MAX_ARTICLES_PER_FEED = int(os.environ.get('MAX_ARTICLES_PER_FEED', '5'))
 SUMMARY_MAX_LENGTH = int(os.environ.get(
