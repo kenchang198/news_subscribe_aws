@@ -38,34 +38,33 @@ def synthesize_speech(text, output_filename, voice_id=POLLY_VOICE_ID):
 
 
 def generate_audio_for_article(article, episode_id, index):
-    """記事の要約から音声を生成する"""
-    logger.info(f"音声生成開始 ({episode_id}, Index {index+1}): {article['title']}")
+    """記事の要約から音声を生成する
+    
+    注意: 統合音声生成方式への移行により、この関数は廃止予定です。
+    互換性のために残していますが、実際には音声ファイルは生成しません。
+    """
+    logger.info(f"[廃止予定] 個別音声生成スキップ ({episode_id}, Index {index+1}): {article['title']}")
 
     try:
-        os.makedirs(AUDIO_DIR, exist_ok=True)
-
+        # 個別音声ファイル生成は行わず、メタデータのみ設定
+        
+        # 互換性のためのダミーパス設定
         audio_base_filename = f"{episode_id}_{index + 1}.mp3"
         output_filename = os.path.join(AUDIO_DIR, audio_base_filename)
-
-        audio_file = synthesize_speech(
-            article["summary"],
-            output_filename
-        )
-
-        if audio_file:
-            if IS_LAMBDA:
-                article["audio_file"] = audio_file
-            else:
-                article["audio_url"] = audio_file
-            logger.info(f"音声生成完了 ({episode_id}, Index {index+1})")
+        
+        # ダミーURLの設定
+        if IS_LAMBDA:
+            # 実際のS3パスではなく、統合ファイルへのマーカーを設定
+            article["audio_file"] = f"unified/{episode_id}.mp3#{index}"
         else:
-            logger.error(f"音声生成失敗 ({episode_id}, Index {index+1})")
-            article["audio_file"] = None
-            article["audio_url"] = None
-
+            # ローカルでも同様のマーカーを設定
+            article["audio_url"] = f"unified/{episode_id}.mp3#{index}"
+            
+        logger.info(f"[廃止予定] 音声メタデータ設定のみ完了 ({episode_id}, Index {index+1})")
+        
         return article
     except Exception as e:
-        logger.error(f"音声生成中にエラー ({episode_id}, Index {index+1}): {str(e)}")
+        logger.error(f"音声メタデータ設定中にエラー ({episode_id}, Index {index+1}): {str(e)}")
         raise
 
 
