@@ -1,4 +1,3 @@
-import os
 import logging
 import openai
 import google.generativeai as genai
@@ -49,12 +48,14 @@ def summarize_with_openai(article_url, article_title, article_summary):
     # 記事の本文を取得する処理（必要に応じて）
     # ここでは簡略化のため、タイトルとRSS内の要約を利用
     # 最大文字数を明示的に指定
-    prompt = f"""以下の記事を{SUMMARY_MAX_LENGTH}文字以内の日本語で要約してください。
-    全体で3行程度にまとめてください。
-    タイトル: {article_title}
-    概要: {article_summary}
-    URL: {article_url}
-    """
+    prompt = (
+        "『はい、承知いたしました』などの挨拶や前置きを含めず、要約のみを出力してください。\n"
+        f"以下の記事を{SUMMARY_MAX_LENGTH}文字以内の日本語で要約してください。\n"
+        "全体で3行程度にまとめてください。\n"
+        f"タイトル: {article_title}\n"
+        f"概要: {article_summary}\n"
+        f"URL: {article_url}\n"
+    )
 
     try:
         response = openai_client.chat.completions.create(
@@ -83,12 +84,14 @@ def summarize_with_gemini(article_url, article_title, article_summary):
     logger.info("Gemini APIで要約処理")
 
     # 最大文字数を明示的に指定
-    prompt = f"""以下の記事を{SUMMARY_MAX_LENGTH}文字以内の日本語で要約してください。
-    全体で3行程度にまとめてください。
-    タイトル: {article_title}
-    概要: {article_summary}
-    URL: {article_url}
-    """
+    prompt = (
+        "『はい、承知いたしました』などの挨拶や前置きを含めず、要約のみを出力してください。\n"
+        f"以下の記事を{SUMMARY_MAX_LENGTH}文字以内の日本語で要約してください。\n"
+        "全体で3行程度にまとめてください。\n"
+        f"タイトル: {article_title}\n"
+        f"概要: {article_summary}\n"
+        f"URL: {article_url}\n"
+    )
 
     try:
         model = genai.GenerativeModel(GEMINI_MODEL)
