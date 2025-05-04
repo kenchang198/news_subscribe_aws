@@ -1,0 +1,20 @@
+Parameters:
+  # S3設定
+  S3BucketName: your-bucket-name-here
+  S3Prefix: audio/
+  
+  # OpenAI API設定
+  OpenAIApiKey: your-openai-api-key-here
+  
+  # Google Gemini API設定
+  GoogleApiKey: your-google-api-key-here
+  
+  # AI設定
+  AIProvider: gemini  # または openai
+  GeminiModel: gemini-2.5-pro-exp-03-25
+  
+  # Amazon Polly設定
+  PollyVoiceId: Takumi
+  
+  # アプリケーション設定
+  SummaryMaxLength: "400"
