@@ -79,7 +79,7 @@ LOCAL_API_URL = os.environ.get('LOCAL_API_URL', 'http://localhost:5001')
 # アプリケーション設定
 MAX_ARTICLES_PER_FEED = int(os.environ.get('MAX_ARTICLES_PER_FEED', '5'))
 SUMMARY_MAX_LENGTH = int(os.environ.get(
-    'SUMMARY_MAX_LENGTH', '800'))  # 要約の長さを増やす
+    'SUMMARY_MAX_LENGTH', '400'))  # Pollyの制限に合わせて要約長を調整
 API_DELAY_SECONDS = float(os.environ.get('API_DELAY_SECONDS', '1.0'))
 
 # 環境に応じたパス設定

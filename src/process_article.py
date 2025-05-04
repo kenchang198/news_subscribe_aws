@@ -1,16 +1,15 @@
 # src/process_article.py を更新
-import os
 import logging
 import openai
 import google.generativeai as genai
 from src.utils import create_article_id
 from src.config import (
-    IS_LAMBDA,
     OPENAI_API_KEY,
     GOOGLE_API_KEY,
     GEMINI_MODEL,
     OPENAI_MODEL,  # OpenAIモデル設定をインポート
-    AI_PROVIDER
+    AI_PROVIDER,
+    SUMMARY_MAX_LENGTH
 )
 
 # ロギング設定
@@ -55,19 +54,33 @@ def summarize_article(article_url, article_title, article_content):
 
     if AI_PROVIDER == 'gemini' and GOOGLE_API_KEY:
         logger.info("AI Provider: Gemini (Google API Key found)")
-        return summarize_with_gemini(article_url, article_title, article_content)
+        return summarize_with_gemini(
+            article_url,
+            article_title,
+            article_content
+        )
     elif AI_PROVIDER == 'openai' and OPENAI_API_KEY:
         logger.info("AI Provider: OpenAI (OpenAI API Key found)")
-        return summarize_with_openai(article_url, article_title, article_content)
+        return summarize_with_openai(
+            article_url,
+            article_title,
+            article_content
+        )
     else:
         if not GOOGLE_API_KEY and not OPENAI_API_KEY:
             error_msg = "有効なAI APIキーが設定されていません (Google or OpenAI)。"
         elif AI_PROVIDER == 'gemini' and not GOOGLE_API_KEY:
-            error_msg = f"AI_PROVIDER が 'gemini' ですが、GOOGLE_API_KEY が設定されていません。"
+            error_msg = (
+                "AI_PROVIDER が 'gemini' ですが、GOOGLE_API_KEY が設定されていません。"
+            )
         elif AI_PROVIDER == 'openai' and not OPENAI_API_KEY:
-            error_msg = f"AI_PROVIDER が 'openai' ですが、OPENAI_API_KEY が設定されていません。"
+            error_msg = (
+                "AI_PROVIDER が 'openai' ですが、OPENAI_API_KEY が設定されていません。"
+            )
         else:
-            error_msg = f"不明な AI_PROVIDER '{AI_PROVIDER}' または関連するAPIキーがありません。"
+            error_msg = (
+                f"不明な AI_PROVIDER '{AI_PROVIDER}' または関連するAPIキーがありません。"
+            )
         logger.error(error_msg)
         return f"要約エラー: {error_msg}"
 
@@ -89,7 +102,13 @@ def summarize_with_openai(article_url, article_title, article_content):
         response = openai_client.chat.completions.create(
             model=OPENAI_MODEL,
             messages=[
-                {"role": "system", "content": "あなたはITニュースを音声で聞きやすく要約する専門家です。技術的な内容を正確に、わかりやすく伝えることを心がけてください。"},
+                {
+                    "role": "system",
+                    "content": (
+                        "あなたはITニュースを音声で聞きやすく要約する専門家です。"
+                        "技術的な内容を正確に、わかりやすく伝えることを心がけてください。"
+                    ),
+                },
                 {"role": "user", "content": prompt}
             ],
             max_tokens=2000
@@ -144,11 +163,17 @@ def translate_text(english_text):
         if not GOOGLE_API_KEY and not OPENAI_API_KEY:
             error_msg = "有効なAI APIキーが設定されていません (Google or OpenAI)。"
         elif AI_PROVIDER == 'gemini' and not GOOGLE_API_KEY:
-            error_msg = f"AI_PROVIDER が 'gemini' ですが、GOOGLE_API_KEY が設定されていません。"
+            error_msg = (
+                "AI_PROVIDER が 'gemini' ですが、GOOGLE_API_KEY が設定されていません。"
+            )
         elif AI_PROVIDER == 'openai' and not OPENAI_API_KEY:
-            error_msg = f"AI_PROVIDER が 'openai' ですが、OPENAI_API_KEY が設定されていません。"
+            error_msg = (
+                "AI_PROVIDER が 'openai' ですが、OPENAI_API_KEY が設定されていません。"
+            )
         else:
-            error_msg = f"不明な AI_PROVIDER '{AI_PROVIDER}' または関連するAPIキーがありません。"
+            error_msg = (
+                f"不明な AI_PROVIDER '{AI_PROVIDER}' または関連するAPIキーがありません。"
+            )
         logger.error(error_msg)
         return f"翻訳エラー: {error_msg}"
 
@@ -171,7 +196,13 @@ def translate_with_openai(english_text):
         response = openai_client.chat.completions.create(
             model=OPENAI_MODEL,
             messages=[
-                {"role": "system", "content": "You are an expert translator specializing in technical content."},
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an expert translator specializing in "
+                        "technical content."
+                    ),
+                },
                 {"role": "user", "content": prompt}
             ],
             max_tokens=2000
@@ -228,11 +259,26 @@ def process_article(article):
         # エラーメッセージが返ってきた場合は処理を続ける（フォールバック）
         if summary.startswith("要約エラー:"):
             logger.warning("要約でエラーが発生しましたが、処理を続行します")
-            
+
+        # 文字数制限のチェックと切り詰め
+        if len(summary) > SUMMARY_MAX_LENGTH:
+            logger.warning(
+                f"要約が最大長({SUMMARY_MAX_LENGTH}文字)を超えるため切り詰めます: {len(summary)}文字")
+            # 文の途中で切れないように、最後の「。」で切り詰める
+            summary_temp = summary[:SUMMARY_MAX_LENGTH]
+            # 最後の「。」の位置を探す
+            last_period_pos = summary_temp.rfind('。')
+            if last_period_pos > 0:  # 「。」が見つかった場合
+                summary = summary_temp[:last_period_pos+1]  # 「。」も含める
+            else:
+                # 「。」が見つからない場合は、単純に切り詰めて「。」を追加
+                summary = summary_temp + '。'
+            logger.info(f"切り詰め後の長さ: {len(summary)}文字")
+
         # 記事IDを生成（URLベースのハッシュ）
         article_url = article.get("link", "")
         article_id = create_article_id(article_url)
-        
+
         # 元のURLを保持しつつ、IDを短い一意の値に変更
         article["url"] = article_url
         article["id"] = article_id

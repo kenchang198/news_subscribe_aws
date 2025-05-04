@@ -15,16 +15,17 @@ from src.config import (
 # ロギング設定
 logger = logging.getLogger(__name__)
 
+
 def synthesize_unified_speech(text, s3_key=None, local_file_path=None, voice_id=POLLY_VOICE_ID):
     """
     テキストを一つの音声ファイルに合成し、S3またはローカルに保存する
-    
+
     Parameters:
     text (str): 音声合成するテキスト
     s3_key (str, optional): S3に保存する際のキー（IS_LAMBDA=Trueの場合必須）
     local_file_path (str, optional): ローカルに保存する際のファイルパス（IS_LAMBDA=Falseの場合必須）
     voice_id (str, optional): Pollyの音声ID
-    
+
     Returns:
     str: 音声ファイルのURL (S3の場合) またはローカルパス
     """
@@ -36,10 +37,22 @@ def synthesize_unified_speech(text, s3_key=None, local_file_path=None, voice_id=
         if not IS_LAMBDA and not local_file_path:
             logger.error("ローカル環境ではlocal_file_pathの指定が必須です")
             return None
-        
+
+        # テキスト長をチェック
+        MAX_POLLY_LENGTH = 3000  # Amazon Pollyの制限
+
+        if len(text) > MAX_POLLY_LENGTH:
+            logger.warning(
+                f"テキスト長({len(text)}文字)がPollyの制限を超えています。要約を短くするか記事数を減らしてください。")
+            # もしテキストが長すぎる場合、切り詰める（エラーよりはマシ）
+            logger.warning("テキストを3000文字に切り詰めて処理を続行します。")
+            # 「。」で区切り、最後にエンディングを追加
+            text = text[:MAX_POLLY_LENGTH].rsplit(
+                '。', 1)[0] + '。\n本日のニュースは以上です。\n明日もお楽しみに。'
+
         # Pollyクライアントの初期化
         polly_client = boto3.client('polly', region_name=AWS_REGION)
-        
+
         # 音声合成リクエスト
         logger.info(f"Pollyで音声合成開始 (Voice: {voice_id})")
         response = polly_client.synthesize_speech(
@@ -48,11 +61,11 @@ def synthesize_unified_speech(text, s3_key=None, local_file_path=None, voice_id=
             VoiceId=voice_id,
             Engine='neural'
         )
-        
+
         # レスポンスから音声データを取得
         if "AudioStream" in response:
             audio_stream = response['AudioStream'].read()
-            
+
             # Lambda環境の場合はS3に保存
             if IS_LAMBDA:
                 s3 = boto3.resource('s3')
@@ -63,21 +76,21 @@ def synthesize_unified_speech(text, s3_key=None, local_file_path=None, voice_id=
                 audio_url = f"https://{S3_BUCKET_NAME}.s3.amazonaws.com/{s3_key}"
                 logger.info(f"音声ファイルをS3に保存: {s3_key}")
                 return audio_url
-            
+
             # ローカル環境の場合はファイルに保存
             else:
                 # 親ディレクトリが存在しない場合は作成
                 os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
-                
+
                 with open(local_file_path, 'wb') as file:
                     file.write(audio_stream)
-                
+
                 logger.info(f"音声ファイルをローカルに保存: {local_file_path}")
                 return local_file_path
         else:
             logger.error("AudioStreamがレスポンスに含まれていません")
             return None
-            
+
     except ClientError as e:
         logger.error(f"Polly API呼び出し中にエラー: {str(e)}")
         return None
@@ -102,17 +115,17 @@ if __name__ == "__main__":
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s'
     )
-    
+
     # テストテキスト（短いテストテキストにする）
     test_text = "これはPollyによる統合音声合成のテストです。ニュース記事を一つの音声ファイルとして合成します。"
-    
+
     # ローカルテスト
     local_path = os.path.join(AUDIO_DIR, "unified_test.mp3")
     result = synthesize_unified_speech(test_text, local_file_path=local_path)
-    
+
     if result:
         print(f"音声ファイル生成成功: {result}")
-        
+
         # 再生時間の予測
         duration = estimate_duration(test_text)
         print(f"予測再生時間: {duration}秒")
