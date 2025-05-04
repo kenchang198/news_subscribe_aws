@@ -28,6 +28,7 @@ samconfig.toml
 
 # Local
 .env
+parameters.yaml
 .vscode/
 .idea/
 *.swp
