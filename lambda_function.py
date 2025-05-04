@@ -2,11 +2,9 @@ import json
 import os
 import time
 import logging
-import shutil
 import datetime  # datetimeをインポート
 from src.fetch_rss import fetch_rss
 from src.process_article import process_article
-from src.text_to_speech import generate_audio_for_article
 from src.s3_uploader import upload_to_s3
 # ナレーション関連をインポート
 from src.narration_generator import generate_narration_texts
@@ -14,10 +12,7 @@ from src.polly_synthesizer import synthesize_and_upload_narrations
 # 統合音声生成関連をインポート
 from src.unified import (
     generate_unified_content,
-    synthesize_unified_speech,
-    create_unified_metadata,
-    save_unified_metadata,
-    update_episodes_list as update_unified_episodes_list
+    synthesize_unified_speech
 )
 from src.config import (
     MAX_ARTICLES_PER_FEED,
@@ -260,20 +255,8 @@ def lambda_handler(event, context):
         # 選択された記事を処理 (enumerate でインデックスを取得)
         for idx, article in enumerate(selected_articles):
             try:
-                # ★ episode_id と index を渡すように変更
+                # 記事処理（要約など）のみ実行
                 processed = process_article(article)
-                processed = generate_audio_for_article(processed, today, idx)
-
-                # 音声合成とS3アップロード (Lambda環境でのみ実行)
-                if IS_LAMBDA and "audio_file" in processed:
-                    # ★ S3パス生成も新しいファイル名基準に
-                    # os.path.basename はフルパスからファイル名部分を取得する
-                    audio_filename = os.path.basename(
-                        processed['audio_file'])
-                    s3_path = f"audio/{audio_filename}"
-                    processed["audio_url"] = upload_to_s3(
-                        processed["audio_file"], s3_path)
-                    del processed["audio_file"]
 
                 processed_articles.append(processed)
                 logger.info(
@@ -294,47 +277,8 @@ def lambda_handler(event, context):
         else:
             logger.info("今回新しく処理した記事はありませんでした。")
 
-    # エピソードの生成
-    if processed_articles:
-        try:
-            # ★ episode_id は既に決定済み
-            # today = time.strftime("%Y-%m-%d") # 削除
-            episode_data = {
-                "episode_id": today,
-                "title": f"Tech News ({today})",
-                "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-                "articles": processed_articles,
-                "source": "Tech News"
-            }
-
-            # ディレクトリ作成
-            if IS_LAMBDA:
-                pass  # Lambda環境では必要ない
-            else:
-                os.makedirs("data/episodes", exist_ok=True)
-
-            # エピソードデータを保存
-            if IS_LAMBDA:
-                # Lambda環境では一時ファイルを/tmpに作成
-                tmp_episode_file = f"/tmp/episode_{today}.json"
-                with open(tmp_episode_file, "w", encoding="utf-8") as f:
-                    json.dump(episode_data, f, ensure_ascii=False, indent=2)
-                # S3にアップロード
-                episode_s3_path = f"data/episodes/episode_{today}.json"
-                upload_to_s3(tmp_episode_file, episode_s3_path)
-            else:
-                # ローカル環境では直接ファイルに書き込み
-                episode_filename = f"data/episodes/episode_{today}.json"
-                with open(episode_filename, "w", encoding="utf-8") as f:
-                    json.dump(episode_data, f, ensure_ascii=False, indent=2)
-                logger.info(f"エピソードをS3に保存しました: {episode_s3_path}")
-
-            # エピソードリストも更新
-            update_episodes_list(episode_data)
-
-            logger.info(f"エピソードを生成しました: {today}")
-        except Exception as e:
-            logger.error(f"エピソード生成中にエラー: {str(e)}", exc_info=True)
+    # この時点では episode_data をまだ保存しない（audio_url 確定後に保存）
+    episode_data = None
 
     # --- 統合音声生成処理 ---
     if processed_articles:  # 処理された記事がある場合のみ統合音声生成
@@ -342,14 +286,15 @@ def lambda_handler(event, context):
             logger.info("統合音声生成処理を開始します...")
             # 日付を取得 (Lambda実行時の日付)
             episode_date = datetime.date.today()
-            
+
             # 統合コンテンツ（全ての記事と繋ぎナレーション）の生成
-            unified_content = generate_unified_content(processed_articles, episode_date)
-            
+            unified_content = generate_unified_content(
+                processed_articles, episode_date)
+
             # 音声ファイル名の決定
             date_str = unified_content["date"]
             audio_filename = f"{date_str}.mp3"
-            
+
             # 音声ファイルのパス/URL設定
             if IS_LAMBDA:
                 audio_s3_key = f"{S3_PREFIX}{audio_filename}"
@@ -357,41 +302,58 @@ def lambda_handler(event, context):
             else:
                 audio_s3_key = None
                 audio_local_path = os.path.join(AUDIO_DIR, audio_filename)
-            
+
             # 統合音声の合成と保存
             audio_url = synthesize_unified_speech(
                 unified_content["full_text"],
                 audio_s3_key,
                 audio_local_path
             )
-            
-            # メタデータの作成と保存
-            if audio_url:
-                # メタデータ作成
-                metadata = create_unified_metadata(
-                    processed_articles,
-                    date_str,
-                    audio_url,
-                    unified_content["full_text"]
-                )
-                
-                # メタデータ保存
-                save_unified_metadata(metadata, date_str)
-                
-                # エピソードリスト更新
-                update_unified_episodes_list(metadata)
-                
-                logger.info(f"統合音声の生成とメタデータ保存が完了しました: {date_str}")
+
+            # 統合音声生成が成功した場合、audio_url を episode_data に統合
+            if processed_articles:
+                episode_data = {
+                    "episode_id": today,
+                    "title": f"Tech News ({today})",
+                    "created_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "audio_url": audio_url,  # 追加
+                    "articles": processed_articles,
+                    "source": "Tech News"
+                }
+
+                # ディレクトリ作成
+                if not IS_LAMBDA:
+                    os.makedirs("data/episodes", exist_ok=True)
+
+                try:
+                    if IS_LAMBDA:
+                        # S3にアップロード
+                        tmp_episode_file = f"/tmp/episode_{today}.json"
+                        with open(tmp_episode_file, "w", encoding="utf-8") as f:
+                            json.dump(episode_data, f,
+                                      ensure_ascii=False, indent=2)
+                        episode_s3_path = f"data/episodes/episode_{today}.json"
+                        upload_to_s3(tmp_episode_file, episode_s3_path)
+                    else:
+                        episode_filename = f"data/episodes/episode_{today}.json"
+                        with open(episode_filename, "w", encoding="utf-8") as f:
+                            json.dump(episode_data, f,
+                                      ensure_ascii=False, indent=2)
+                    # エピソードリストを更新
+                    update_episodes_list(episode_data)
+                    logger.info(f"エピソード（統合音声付き）を保存しました: {today}")
+                except Exception as e:
+                    logger.error(f"エピソード保存中にエラー: {e}", exc_info=True)
             else:
-                logger.error("統合音声生成に失敗したため、メタデータ保存をスキップします")
-                
+                logger.error("audio_url が取得できなかったため episode_data への統合をスキップします")
+
         except Exception as e:
             logger.error(f"統合音声生成処理中にエラーが発生しました: {e}", exc_info=True)
             # 統合音声生成エラーは致命的ではないため、処理を続行
     else:
         logger.info("処理対象の記事がなかったため、統合音声生成をスキップします。")
     # --- 統合音声生成処理 ここまで ---
-    
+
     # --- 従来のナレーション生成・合成処理 (テスト検証用に一時的に残す) ---
     narration_s3_keys = {}
     if processed_articles and False:  # False条件で無効化
@@ -444,43 +406,39 @@ if __name__ == "__main__":
     # デバッグモード（気になる処理を個別に実行する場合はここに追加）
     DEBUG_MODE = False
     if DEBUG_MODE:
-        # 統合音声生成テスト用
-        from src.fetch_rss import fetch_rss
-        from src.process_article import process_article
-        from src.unified import (
-            generate_unified_content,
-            synthesize_unified_speech,
+        # 統合音声生成テスト用（既存インポートの再定義を避ける）
+        from src.unified.metadata_processor import (
             create_unified_metadata,
             save_unified_metadata
         )
-        
+
         try:
             logger.info("統合音声生成テスト開始...")
-            
+
             # テスト用に2記事のみ取得
             articles = fetch_rss(RSS_FEEDS['hatena_it'])[:2]
             processed_articles = []
-            
+
             # 記事処理
             for article in articles:
                 processed = process_article(article)
                 processed_articles.append(processed)
-            
+
             # 統合コンテンツ生成
             unified_content = generate_unified_content(processed_articles)
-            
+
             # 日付とファイル名設定
             date_str = unified_content["date"]
             audio_filename = f"{date_str}_test.mp3"
             audio_path = os.path.join(AUDIO_DIR, audio_filename)
-            
+
             # 統合音声生成
             audio_url = synthesize_unified_speech(
                 unified_content["full_text"],
                 None,  # S3キーは使用しない
                 audio_path  # ローカルパス
             )
-            
+
             # メタデータ生成と保存
             if audio_url:
                 metadata = create_unified_metadata(
@@ -493,10 +451,10 @@ if __name__ == "__main__":
                 logger.info(f"統合音声生成テスト完了: {audio_url}")
             else:
                 logger.error("統合音声生成失敗")
-            
+
         except Exception as e:
             logger.error(f"統合音声生成テスト中にエラー: {str(e)}", exc_info=True)
-        
+
         logger.info("デバッグモード終了")
         exit(0)  # デバッグモードの場合はここで終了
 
