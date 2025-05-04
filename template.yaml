@@ -1,11 +1,11 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: News Subscribe App - Lambda Function
 
 Globals:
   Function:
-    Timeout: 300
-    MemorySize: 256
+    Timeout: 600
+    MemorySize: 512
 
 Resources:
   NewsProcessingFunction:
@@ -20,10 +20,13 @@ Resources:
       Environment:
         Variables:
           S3_BUCKET_NAME: !Ref S3BucketName
+          S3_PREFIX: !Ref S3Prefix
           OPENAI_API_KEY: !Ref OpenAIApiKey
           GOOGLE_API_KEY: !Ref GoogleApiKey
           AI_PROVIDER: !Ref AIProvider
           GEMINI_MODEL: !Ref GeminiModel
+          POLLY_VOICE_ID: !Ref PollyVoiceId
+          SUMMARY_MAX_LENGTH: !Ref SummaryMaxLength
       Policies:
         - AmazonPollyFullAccess
         - S3FullAccessPolicy:
@@ -41,13 +44,17 @@ Parameters:
     Type: String
     Default: news-audio-files-kenchang198-dev
     Description: Name of the S3 bucket for storing audio files
-  
-  
+
+  S3Prefix:
+    Type: String
+    Default: audio/
+    Description: S3 prefix for audio files
+
   OpenAIApiKey:
     Type: String
     NoEcho: true
     Description: OpenAI API Key (Legacy Support)
-  
+
   GoogleApiKey:
     Type: String
     NoEcho: true
@@ -60,14 +67,29 @@ Parameters:
 
   GeminiModel:
     Type: String
-    Default: gemini-pro
+    Default: gemini-1.5-pro
     Description: Gemini Model Name
+
+  OpenAIModel:
+    Type: String
+    Default: gpt-3.5-turbo
+    Description: OpenAI Model Name (Legacy Support)
+
+  PollyVoiceId:
+    Type: String
+    Default: Takumi
+    Description: Amazon Polly Voice ID
+
+  SummaryMaxLength:
+    Type: String
+    Default: "400"
+    Description: Maximum length of article summaries
 
 Outputs:
   NewsProcessingFunction:
     Description: News Processing Lambda Function ARN
     Value: !GetAtt NewsProcessingFunction.Arn
-  
+
   S3BucketName:
     Description: S3 bucket for audio files
     Value: !Ref S3BucketName
