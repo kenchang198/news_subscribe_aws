@@ -182,8 +182,6 @@ def update_episodes_list(episode_data):
 
 
 def lambda_handler(event, context):
-    os.environ['TZ'] = 'Asia/Tokyo'
-    time.tzset()
     """
     複数の日本語RSSフィードから記事を取得、要約して日本語音声を生成するLambda関数
     """
