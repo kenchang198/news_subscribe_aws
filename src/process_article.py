@@ -11,6 +11,7 @@ from src.config import (
     AI_PROVIDER,
     SUMMARY_MAX_LENGTH
 )
+import re
 
 # ロギング設定
 logger = logging.getLogger(__name__)
@@ -140,6 +141,9 @@ def summarize_with_gemini(article_url, article_title, article_content):
         response = model.generate_content(prompt)
 
         summary = response.text.strip()
+        marker = "この記事は"
+        if marker in summary:
+            summary = summary[summary.index(marker):].strip()
         logger.info(f"Gemini 要約完了: {len(summary)}文字")
         return summary
     except Exception as e:
@@ -263,7 +267,10 @@ def process_article(article):
         # 文字数制限のチェックと切り詰め
         if len(summary) > SUMMARY_MAX_LENGTH:
             logger.warning(
-                f"要約が最大長({SUMMARY_MAX_LENGTH}文字)を超えるため切り詰めます: {len(summary)}文字")
+                "要約が最大長(%s文字)を超えるため切り詰めます: %s文字",
+                SUMMARY_MAX_LENGTH,
+                len(summary),
+            )
             # 文の途中で切れないように、最後の「。」で切り詰める
             summary_temp = summary[:SUMMARY_MAX_LENGTH]
             # 最後の「。」の位置を探す
