@@ -2,6 +2,7 @@ import feedparser
 import time
 import logging
 from datetime import datetime, timezone
+from src.utils import contains_japanese
 
 # ロギング設定
 logger = logging.getLogger(__name__)
@@ -51,9 +52,15 @@ def fetch_rss(feed_url):
             content_value = content_list[0].get(
                 'value', '') if content_list else ''
 
+            title = entry.get('title', 'No Title')
+            
+            if not contains_japanese(title):
+                logger.info(f"日本語を含まないタイトルの記事をスキップ: {title[:50]}...")
+                continue
+                
             article_data = {
                 'id': article_id,
-                'title': entry.get('title', 'No Title'),
+                'title': title,
                 'link': entry.get('link', ''),
                 'published': published_str,
                 'summary': entry.get('summary', ''),
