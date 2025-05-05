@@ -27,6 +27,7 @@ Resources:
           GEMINI_MODEL: !Ref GeminiModel
           POLLY_VOICE_ID: !Ref PollyVoiceId
           SUMMARY_MAX_LENGTH: !Ref SummaryMaxLength
+          TZ: !Ref TimeZone
       Policies:
         - AmazonPollyFullAccess
         - S3FullAccessPolicy:
@@ -85,11 +86,20 @@ Parameters:
     Default: "400"
     Description: Maximum length of article summaries
 
+  TimeZone:
+    Type: String
+    Default: Asia/Tokyo
+    Description: Linux TZ database name for the Lambda runtime (e.g., Asia/Tokyo)
+
 Outputs:
   NewsProcessingFunction:
     Description: News Processing Lambda Function ARN
-    Value: !GetAtt NewsProcessingFunction.Arn
+    Value:
+      Fn::GetAtt:
+        - NewsProcessingFunction
+        - Arn
 
   S3BucketName:
     Description: S3 bucket for audio files
-    Value: !Ref S3BucketName
+    Value:
+      Ref: S3BucketName
