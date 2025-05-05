@@ -2,6 +2,7 @@ import hashlib
 import time
 import random
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -30,3 +31,19 @@ def create_article_id(url):
         timestamp = int(time.time())
         random_suffix = random.randint(100, 999)
         return f"{timestamp}_{random_suffix}"
+def contains_japanese(text):
+    """
+    テキストに日本語文字（ひらがな、カタカナ、漢字）が含まれているかをチェックする
+    
+    Args:
+        text (str): チェックするテキスト
+        
+    Returns:
+        bool: 日本語文字が含まれている場合はTrue、そうでない場合はFalse
+    """
+    if not text:
+        return False
+        
+    japanese_pattern = re.compile(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]')
+    
+    return bool(japanese_pattern.search(text))
