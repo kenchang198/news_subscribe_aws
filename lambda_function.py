@@ -207,6 +207,10 @@ def lambda_handler(event, context):
                 # 処理済み記事を除外し、ソース情報を追加
                 added_count = 0
                 for article in fetched_articles:
+                    if article['link'].startswith('https://github.com/'):
+                        logger.info(f"GitHub URLをスキップしました: {article['title']} - {article['link']}")
+                        continue
+                        
                     if article['id'] not in processed_ids:
                         article["source_id"] = source_id
                         all_articles.append(article)

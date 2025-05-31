@@ -33,10 +33,12 @@ if loaded_google_key:
         "src/config.py: GOOGLE_API_KEY loaded from environment.")
     # セキュリティのためキーの一部のみ表示
     logger_config.info(
-        f"src/config.py: GOOGLE_API_KEY starts with: {loaded_google_key[:5]}...")
+        f"src/config.py: GOOGLE_API_KEY starts with: "
+        f"{loaded_google_key[:5]}...")
 else:
     logger_config.warning(
-        "src/config.py: GOOGLE_API_KEY not found in environment after load_dotenv()!")
+        "src/config.py: GOOGLE_API_KEY not found in environment "
+        "after load_dotenv()!")
 # --- デバッグログ追加 ここまで --- #
 
 # Lambda環境かどうかを判定
@@ -69,6 +71,9 @@ POLLY_VOICE_ID_EN = os.environ.get('POLLY_VOICE_ID_EN', 'Matthew')  # 英語男�
 POLLY_VOICE_ID = os.environ.get('POLLY_VOICE_ID', 'Takumi')   # 日本語男性音声
 POLLY_ENGINE = os.environ.get('POLLY_ENGINE', 'neural')  # standard または neural
 
+# 番組設定
+PROGRAM_NAME = os.environ.get('PROGRAM_NAME', 'Tech News Radio')
+
 # フィード設定
 # 複数のフィードを登録
 RSS_FEEDS = {
@@ -81,7 +86,10 @@ MEDIUM_FEED_URL = os.environ.get(
     'MEDIUM_FEED_URL', 'https://medium.com/feed/tag/programming')
 
 # API エンドポイント設定
-API_BASE_URL = os.environ.get('API_BASE_URL', 'https://your-api-gateway-url.execute-api.ap-northeast-1.amazonaws.com/dev')
+API_BASE_URL = os.environ.get(
+    'API_BASE_URL',
+    'https://your-api-gateway-url.execute-api.'
+    'ap-northeast-1.amazonaws.com/dev')
 LOCAL_API_URL = os.environ.get('LOCAL_API_URL', 'http://localhost:5001')
 
 # アプリケーション設定
