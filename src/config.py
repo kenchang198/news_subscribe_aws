@@ -8,14 +8,21 @@ import logging  # logging をインポート
 dotenv_path = os.path.abspath(os.path.join(
     os.path.dirname(__file__), '..', '.env'))
 logger_config_path = logging.getLogger(__name__ + ".config_path")
-logger_config_path.info(f"Attempting to load .env file from: {dotenv_path}")
 
-# .env ファイルから環境変数を読み込み (パスを明示的に指定)
-# override=True は、もし複数回 load_dotenv が呼ばれた場合に上書きを許可する
-dotenv_loaded = load_dotenv(dotenv_path=dotenv_path, override=True)
-if not dotenv_loaded:
-    logger_config_path.warning(
-        f".env file specified but not loaded from: {dotenv_path}")
+# Lambda環境かどうかを判定
+IS_LAMBDA = os.environ.get('AWS_LAMBDA_FUNCTION_NAME') is not None
+
+# Lambda環境でない場合のみ.envを読み込む
+if not IS_LAMBDA:
+    logger_config_path.info(f"Attempting to load .env file from: {dotenv_path}")
+    # .env ファイルから環境変数を読み込み (パスを明示的に指定)
+    # override=True は、もし複数回 load_dotenv が呼ばれた場合に上書きを許可する
+    dotenv_loaded = load_dotenv(dotenv_path=dotenv_path, override=True)
+    if not dotenv_loaded:
+        logger_config_path.warning(
+            f".env file specified but not loaded from: {dotenv_path}")
+else:
+    logger_config_path.info("Running in Lambda environment, skipping .env file loading")
 # --- ここまで ---
 
 # --- デバッグログ追加 --- #
@@ -52,8 +59,9 @@ OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-3.5-turbo')
 
 # Google Gemini API 設定
 GOOGLE_API_KEY = loaded_google_key
+# Geminiモデル名（最新のAPI仕様に合わせて変更）
 GEMINI_MODEL = os.environ.get(
-    'GEMINI_MODEL', 'gemini-pro')  # gemini-proをデフォルトに変更
+    'GEMINI_MODEL', 'gemini-1.5-pro')  # 新しいデフォルトとしてgemini-1.5-proを使用
 
 # AI プロバイダー設定
 AI_PROVIDER = os.environ.get('AI_PROVIDER', 'gemini')  # 'openai' または 'gemini'
@@ -87,7 +95,7 @@ LOCAL_API_URL = os.environ.get('LOCAL_API_URL', 'http://localhost:5001')
 # アプリケーション設定
 MAX_ARTICLES_PER_FEED = int(os.environ.get('MAX_ARTICLES_PER_FEED', '5'))
 SUMMARY_MAX_LENGTH = int(os.environ.get(
-    'SUMMARY_MAX_LENGTH', '800'))  # 要約の長さを増やす
+    'SUMMARY_MAX_LENGTH', '400'))  # Pollyの制限に合わせて要約長を調整
 API_DELAY_SECONDS = float(os.environ.get('API_DELAY_SECONDS', '1.0'))
 
 # 環境に応じたパス設定

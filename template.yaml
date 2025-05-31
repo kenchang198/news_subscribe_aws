@@ -4,8 +4,8 @@ Description: News Subscribe App - Lambda Function
 
 Globals:
   Function:
-    Timeout: 300
-    MemorySize: 256
+    Timeout: 600
+    MemorySize: 512
 
 Resources:
   NewsProcessingFunction:
@@ -70,7 +70,7 @@ Parameters:
 
   GeminiModel:
     Type: String
-    Default: gemini-pro
+    Default: gemini-1.5-pro
     Description: Gemini Model Name
 
   OpenAIModel:
