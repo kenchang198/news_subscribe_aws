@@ -2,7 +2,10 @@ import datetime
 from src.config import PROGRAM_NAME
 
 
-def generate_narration_texts(episode_date: datetime.date, articles: list[dict]) -> dict[str, str]:
+def generate_narration_texts(
+    episode_date: datetime.date,
+    articles: list[dict]
+) -> dict[str, str]:
     """
     エピソードの日付と記事リストに基づいて、ナレーションテキストを生成する。
 
