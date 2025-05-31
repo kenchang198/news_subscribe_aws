@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: News Subscribe App - Lambda Function
 
@@ -20,10 +20,16 @@ Resources:
       Environment:
         Variables:
           S3_BUCKET_NAME: !Ref S3BucketName
+          S3_PREFIX: !Ref S3Prefix
           OPENAI_API_KEY: !Ref OpenAIApiKey
           GOOGLE_API_KEY: !Ref GoogleApiKey
           AI_PROVIDER: !Ref AIProvider
           GEMINI_MODEL: !Ref GeminiModel
+          OPENAI_MODEL: !Ref OpenAIModel
+          POLLY_VOICE_ID: !Ref PollyVoiceId
+          SUMMARY_MAX_LENGTH: !Ref SummaryMaxLength
+          PROGRAM_NAME: !Ref ProgramName
+          TZ: !Ref TimeZone
       Policies:
         - AmazonPollyFullAccess
         - S3FullAccessPolicy:
@@ -41,13 +47,17 @@ Parameters:
     Type: String
     Default: news-audio-files-kenchang198-dev
     Description: Name of the S3 bucket for storing audio files
-  
-  
+
+  S3Prefix:
+    Type: String
+    Default: audio/
+    Description: S3 prefix for storing audio files
+
   OpenAIApiKey:
     Type: String
     NoEcho: true
     Description: OpenAI API Key (Legacy Support)
-  
+
   GoogleApiKey:
     Type: String
     NoEcho: true
@@ -63,11 +73,36 @@ Parameters:
     Default: gemini-pro
     Description: Gemini Model Name
 
+  OpenAIModel:
+    Type: String
+    Default: gpt-3.5-turbo
+    Description: OpenAI Model Name
+
+  PollyVoiceId:
+    Type: String
+    Default: Takumi
+    Description: Amazon Polly Voice ID for Japanese speech synthesis
+
+  SummaryMaxLength:
+    Type: String
+    Default: "400"
+    Description: Maximum length for article summaries
+
+  TimeZone:
+    Type: String
+    Default: Asia/Tokyo
+    Description: Linux TZ database name for the Lambda runtime (e.g., Asia/Tokyo)
+
+  ProgramName:
+    Type: String
+    Default: Tech News Radio
+    Description: Name of the news program
+
 Outputs:
   NewsProcessingFunction:
     Description: News Processing Lambda Function ARN
     Value: !GetAtt NewsProcessingFunction.Arn
-  
+
   S3BucketName:
     Description: S3 bucket for audio files
     Value: !Ref S3BucketName

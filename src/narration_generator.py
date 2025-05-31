@@ -1,4 +1,5 @@
 import datetime
+from src.config import PROGRAM_NAME
 
 
 def generate_narration_texts(episode_date: datetime.date, articles: list[dict]) -> dict[str, str]:
@@ -25,11 +26,9 @@ def generate_narration_texts(episode_date: datetime.date, articles: list[dict]) 
     weekdays_jp = ["月", "火", "水", "木", "金", "土", "日"]
     weekday_jp = weekdays_jp[weekday_index]
 
-    # TODO: 番組名を定数や設定から取得するように変更する
-    program_name = "Tech News Radio"  # 仮の番組名
     # 複数行のf-stringはトリプルクオートで囲む
     narrations['intro'] = f"""みなさんこんにちは本日は{month}月{day}日{weekday_jp}曜日です。
-本日も{program_name}を元気よく初めていきます。"""
+本日も{PROGRAM_NAME}を元気よく初めていきます。"""
 
     # --- 記事紹介と繋ぎ ---
     for i, article in enumerate(articles):
