@@ -38,9 +38,9 @@ Resources:
         ScheduledEvent:
           Type: Schedule
           Properties:
-            Schedule: rate(1 day)
+            Schedule: cron(0 22 ? * * *)
             Name: NewsProcessingSchedule
-            Description: Triggers the news processing function every 6 hours
+            Description: Triggers the news processing function every day at 7 AM JST
 
 Parameters:
   S3BucketName:
