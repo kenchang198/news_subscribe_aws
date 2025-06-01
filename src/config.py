@@ -14,7 +14,8 @@ IS_LAMBDA = os.environ.get('AWS_LAMBDA_FUNCTION_NAME') is not None
 
 # Lambda環境でない場合のみ.envを読み込む
 if not IS_LAMBDA:
-    logger_config_path.info(f"Attempting to load .env file from: {dotenv_path}")
+    logger_config_path.info(
+        f"Attempting to load .env file from: {dotenv_path}")
     # .env ファイルから環境変数を読み込み (パスを明示的に指定)
     # override=True は、もし複数回 load_dotenv が呼ばれた場合に上書きを許可する
     dotenv_loaded = load_dotenv(dotenv_path=dotenv_path, override=True)
@@ -22,7 +23,8 @@ if not IS_LAMBDA:
         logger_config_path.warning(
             f".env file specified but not loaded from: {dotenv_path}")
 else:
-    logger_config_path.info("Running in Lambda environment, skipping .env file loading")
+    logger_config_path.info(
+        "Running in Lambda environment, skipping .env file loading")
 # --- ここまで ---
 
 # --- デバッグログ追加 --- #
@@ -73,6 +75,7 @@ POLLY_ENGINE = os.environ.get('POLLY_ENGINE', 'neural')  # standard または ne
 
 # 番組設定
 PROGRAM_NAME = os.environ.get('PROGRAM_NAME', 'Tech News Radio')
+PROGRAM_DESCRIPTION = '本日もはてなブックマーク［テクノロジー］カテゴリの人気記事を紹介していきます。'
 
 # フィード設定
 # 複数のフィードを登録

@@ -1,5 +1,7 @@
+# flake8: noqa
 import logging
 import datetime
+from src import config  # 番組名設定を利用
 
 # ロガー設定
 logger = logging.getLogger(__name__)
@@ -36,10 +38,10 @@ def generate_unified_content(processed_articles, episode_date=None):
         # 挨拶文
         # 複数行のf-stringはトリプルクオートで囲む
         intro_text = f"""みなさんこんにちは本日は{formatted_date}です。
-本日もTech News Radioを元気よく初めていきます。"""
+{config.PROGRAM_DESCRIPTION}"""
 
         # エンディングテキスト
-        outro_text = """本日のニュースは以上です。
+        outro_text = """本日は以上です。
 明日もお楽しみに。"""
 
         # Amazon Pollyの文字数制限を考慮したテキスト長端点
