@@ -12,7 +12,9 @@ ITニュース記事の要約と音声合成による配信システム
 - 日本語RSSフィードからニュース記事の取得
 - AI（Google Gemini APIまたはOpenAI API）による記事の日本語要約
 - Amazon Pollyによる日本語音声合成
+- 統合音声生成（複数記事を一つのポッドキャスト形式音声ファイルに統合）
 - S3への音声ファイル保存
+- エピソードメタデータの自動生成
 - リソース最適化（英語処理を省略）
 
 ## 技術スタック
@@ -24,6 +26,29 @@ ITニュース記事の要約と音声合成による配信システム
 - Google Gemini API
 - OpenAI API (レガシーサポート)
 - AWS SAM (Serverless Application Model)
+
+## アーキテクチャ
+
+### 統合音声生成システム
+
+本システムでは、複数の記事を一つの音声ファイルに統合する「統合音声生成」機能を採用しています：
+
+- `src/unified/content_generator.py` - 記事とナレーションを統合したコンテンツ生成
+- `src/unified/speech_synthesizer.py` - 統合音声の合成とS3アップロード
+- `src/unified/metadata_processor.py` - 統合メタデータの生成と管理
+
+この統合アプローチにより、個別の音声ファイルではなく、ポッドキャスト形式の連続した音声コンテンツを提供します。
+
+## 統合音声生成について
+
+本システムの特徴的な機能として、複数のニュース記事を一つの連続した音声ファイルに統合する「統合音声生成」があります：
+
+- **シームレスな聴取体験**: 個別の音声ファイルではなく、ポッドキャスト形式の連続音声
+- **自動ナレーション**: 記事間の繋ぎナレーションを自動生成
+- **文字数制限対応**: Amazon Pollyの制限内で最適な記事数を自動選択
+- **日付ベースのエピソード管理**: 日付ごとのエピソード形式で管理
+
+従来の個別音声ファイル生成機能も残されていますが、現在は統合音声生成がメインの機能として使用されています。
 
 ## セットアップ
 
@@ -97,15 +122,26 @@ OPENAI_MODEL=gpt-3.5-turbo
 
 # Google Gemini API
 GOOGLE_API_KEY=your_google_api_key
-GEMINI_MODEL=gemini-pro  # または他の利用可能なモデル
+GEMINI_MODEL=gemini-1.5-pro  # または他の利用可能なモデル
 
 # AI プロバイダー設定（'openai' または 'gemini'）
 AI_PROVIDER=gemini
 
 # Amazon Polly 設定
-POLLY_VOICE_ID_EN=Matthew
-POLLY_VOICE_ID_JA=Takumi
-POLLY_ENGINE=neural
+POLLY_VOICE_ID_EN=Matthew  # 英語男性音声
+POLLY_VOICE_ID=Takumi      # 日本語男性音声 
+POLLY_ENGINE=neural        # standard または neural
+
+# 番組設定
+PROGRAM_NAME=Tech News Radio
+
+# アプリケーション設定
+MAX_ARTICLES_PER_FEED=5
+SUMMARY_MAX_LENGTH=400  # 要約の最大文字数
+API_DELAY_SECONDS=1.0
+
+# ロギング設定
+LOG_LEVEL=INFO
 ```
 
 ### Google Gemini API キーの取得方法
