@@ -1,7 +1,7 @@
 import boto3
 import os
 import logging
-from src.config import AWS_REGION, S3_BUCKET_NAME, API_BASE_URL, IS_LAMBDA, LOCAL_API_URL
+from src.config import AWS_REGION, S3_BUCKET_NAME, API_BASE_URL, IS_LAMBDA
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ def build_api_audio_url(file_path):
     file_name = os.path.basename(file_path)
     
     # 開発環境か本番環境かで分岐
-    base_url = API_BASE_URL if IS_LAMBDA else LOCAL_API_URL
+    base_url = API_BASE_URL if IS_LAMBDA else "http://localhost:5001"
     
     # audio/で始まる場合は、そのまま使用
     if file_path.startswith('audio/'):

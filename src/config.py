@@ -43,9 +43,6 @@ else:
         "after load_dotenv()!")
 # --- デバッグログ追加 ここまで --- #
 
-# Lambda環境かどうかを判定
-IS_LAMBDA = os.environ.get('AWS_LAMBDA_FUNCTION_NAME') is not None
-
 # AWS 設定
 AWS_REGION = os.environ.get('AWS_REGION', 'ap-northeast-1')
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
@@ -69,7 +66,6 @@ GEMINI_MODEL = os.environ.get(
 AI_PROVIDER = os.environ.get('AI_PROVIDER', 'gemini')  # 'openai' または 'gemini'
 
 # Amazon Polly 設定
-POLLY_VOICE_ID_EN = os.environ.get('POLLY_VOICE_ID_EN', 'Matthew')  # 英語男性音声
 POLLY_VOICE_ID = os.environ.get('POLLY_VOICE_ID', 'Takumi')   # 日本語男性音声
 POLLY_ENGINE = os.environ.get('POLLY_ENGINE', 'neural')  # standard または neural
 
@@ -84,16 +80,11 @@ RSS_FEEDS = {
     # 'business_insider': 'https://www.businessinsider.jp/feed/index.xml'
 }
 
-# レガシーサポート用
-MEDIUM_FEED_URL = os.environ.get(
-    'MEDIUM_FEED_URL', 'https://medium.com/feed/tag/programming')
-
 # API エンドポイント設定
 API_BASE_URL = os.environ.get(
     'API_BASE_URL',
     'https://your-api-gateway-url.execute-api.'
     'ap-northeast-1.amazonaws.com/dev')
-LOCAL_API_URL = os.environ.get('LOCAL_API_URL', 'http://localhost:5001')
 
 # アプリケーション設定
 MAX_ARTICLES_PER_FEED = int(os.environ.get('MAX_ARTICLES_PER_FEED', '5'))
