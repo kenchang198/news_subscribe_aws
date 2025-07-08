@@ -1,5 +1,51 @@
 import datetime
+import re
 from src.config import PROGRAM_NAME
+
+
+def remove_site_name_from_title(title):
+    """
+    タイトルからサイト名を除去する
+    
+    Args:
+        title (str): 元のタイトル
+        
+    Returns:
+        str: サイト名を除去したタイトル
+    """
+    if not title:
+        return title
+    
+    # よくあるサイト名の表記パターンを除去
+    patterns = [
+        r'^[^：]*：\s*',          # "サイト名：タイトル" → "タイトル"
+        r'^[^:]*:\s*',            # "サイト名:タイトル" → "タイトル"
+        r'^【[^】]*】\s*',         # "【サイト名】タイトル" → "タイトル"
+        r'^\[[^\]]*\]\s*',        # "[サイト名]タイトル" → "タイトル"
+        r'^（[^）]*）\s*',         # "（サイト名）タイトル" → "タイトル"
+        r'^\([^)]*\)\s*',         # "(サイト名)タイトル" → "タイトル"
+        r'^[^｜]*｜\s*',          # "サイト名｜タイトル" → "タイトル"
+        r'^[^|]*\|\s*',           # "サイト名|タイトル" → "タイトル"
+        r'^[^－]*－\s*',          # "サイト名－タイトル" → "タイトル"
+        r'^[^-]*-\s*',            # "サイト名-タイトル" → "タイトル"
+        r'^\S+\s*:\s*',           # "サイト名 : タイトル" → "タイトル"
+    ]
+    
+    cleaned_title = title
+    for pattern in patterns:
+        cleaned_title = re.sub(pattern, '', cleaned_title)
+        # パターンにマッチした場合は他のパターンを試さない
+        if cleaned_title != title:
+            break
+    
+    # 先頭と末尾の空白を除去
+    cleaned_title = cleaned_title.strip()
+    
+    # 空文字列になった場合は元のタイトルを返す
+    if not cleaned_title:
+        return title
+    
+    return cleaned_title
 
 
 def generate_narration_texts(
@@ -35,7 +81,8 @@ def generate_narration_texts(
 
     # --- 記事紹介と繋ぎ ---
     for i, article in enumerate(articles):
-        title = article.get('title', '（タイトル不明）')
+        original_title = article.get('title', '（タイトル不明）')
+        title = remove_site_name_from_title(original_title)
         key = f"transition_{i+1}"  # 1記事目の紹介からtransition_1とする
 
         if i == 0:
