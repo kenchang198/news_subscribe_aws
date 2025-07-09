@@ -127,7 +127,55 @@ python lambda_function.py
 
 ## AWS へのデプロイ
 
-AWS SAM を使用してデプロイします：
+### 環境別デプロイ
+
+このプロジェクトでは STG（ステージング）環境と本番環境の2つの環境をサポートしています。
+
+#### 環境設定ファイル
+
+環境ごとに設定ファイルを作成してください：
+
+- `.env.stg` - ステージング環境用
+- `.env.prod` - 本番環境用
+
+テンプレートファイルをコピーして各環境用の設定ファイルを作成します：
+
+```bash
+# ステージング環境設定の作成
+cp .env.example .env.stg
+
+# 本番環境設定の作成
+cp .env.example .env.prod
+```
+
+各環境ファイルで `S3_BUCKET_NAME` やその他の設定を環境に応じて変更してください。
+
+#### デプロイコマンド
+
+```bash
+# ステージング環境へのデプロイ
+./deploy.sh stg
+
+# 本番環境へのデプロイ
+./deploy.sh prod
+
+# または、確認付きデプロイ（特に本番環境推奨）
+./deploy-env.sh stg   # ステージング環境
+./deploy-env.sh prod  # 本番環境（確認プロンプトあり）
+```
+
+#### 環境別リソース
+
+各環境では以下のリソースが作成されます：
+
+- **Lambda関数名**: `news-processing-stg` / `news-processing-prod`
+- **CloudFormationスタック名**: `news-subscribe-stg` / `news-subscribe-prod`
+- **S3バケット名**: 環境設定ファイルで指定
+- **スケジュール名**: `NewsProcessingSchedule-stg` / `NewsProcessingSchedule-prod`
+
+### 従来のデプロイ方法（非推奨）
+
+従来の方法でデプロイすることも可能ですが、環境別デプロイを推奨します：
 
 ```bash
 sam build

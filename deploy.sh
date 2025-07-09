@@ -1,17 +1,29 @@
 #!/bin/bash
 
-# SAM Deploy Script using .env file
+# SAM Deploy Script with Environment Support
 
-echo "Starting SAM deployment..."
+# Environment argument (default to stg)
+ENVIRONMENT=${1:-stg}
 
-# Check if .env exists
-if [ ! -f ".env" ]; then
-    echo "Error: .env file not found!"
+echo "Starting SAM deployment for environment: $ENVIRONMENT"
+
+# Validate environment
+if [[ "$ENVIRONMENT" != "stg" && "$ENVIRONMENT" != "prod" ]]; then
+    echo "Error: Environment must be 'stg' or 'prod'"
+    echo "Usage: $0 [stg|prod]"
     exit 1
 fi
 
-# Load environment variables from .env file (improved parsing)
-echo "Loading environment variables from .env..."
+# Check if environment-specific .env file exists
+ENV_FILE=".env.$ENVIRONMENT"
+if [ ! -f "$ENV_FILE" ]; then
+    echo "Error: Environment file $ENV_FILE not found!"
+    echo "Please create $ENV_FILE with the appropriate configuration"
+    exit 1
+fi
+
+# Load environment variables from environment-specific .env file
+echo "Loading environment variables from $ENV_FILE..."
 while IFS= read -r line; do
     # Skip empty lines and comments
     if [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]]; then
@@ -30,7 +42,7 @@ while IFS= read -r line; do
         export "$key"="$value"
         echo "  Loaded: $key=$value"
     fi
-done < .env
+done < "$ENV_FILE"
 
 # Set default values for missing parameters
 S3_PREFIX=${S3_PREFIX:-"audio/"}
@@ -73,8 +85,9 @@ fi
 
 # Deploy with parameters
 echo ""
-echo "Deploying to AWS..."
-sam deploy --parameter-overrides \
+echo "Deploying to AWS ($ENVIRONMENT environment)..."
+sam deploy --stack-name "news-subscribe-$ENVIRONMENT" --parameter-overrides \
+  Environment="$ENVIRONMENT" \
   S3BucketName="$S3_BUCKET_NAME" \
   S3Prefix="$S3_PREFIX" \
   OpenAIApiKey="${OPENAI_API_KEY:-dummy-key}" \
@@ -89,9 +102,10 @@ sam deploy --parameter-overrides \
 
 if [ $? -eq 0 ]; then
     echo ""
-    echo "Deployment completed successfully!"
+    echo "Deployment completed successfully for $ENVIRONMENT environment!"
+    echo "Stack name: news-subscribe-$ENVIRONMENT"
 else
     echo ""
-    echo "Deployment failed!"
+    echo "Deployment failed for $ENVIRONMENT environment!"
     exit 1
 fi 

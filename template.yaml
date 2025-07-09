@@ -11,6 +11,7 @@ Resources:
   NewsProcessingFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub "news-processing-${Environment}"
       CodeUri: ./
       # Handler: src/main.lambda_handler
       Handler: lambda_function.lambda_handler
@@ -30,6 +31,7 @@ Resources:
           SUMMARY_MAX_LENGTH: !Ref SummaryMaxLength
           PROGRAM_NAME: !Ref ProgramName
           TZ: !Ref TimeZone
+          ENVIRONMENT: !Ref Environment
       Policies:
         - AmazonPollyFullAccess
         - S3FullAccessPolicy:
@@ -39,10 +41,18 @@ Resources:
           Type: Schedule
           Properties:
             Schedule: cron(0 22 ? * * *)
-            Name: NewsProcessingSchedule
-            Description: Triggers the news processing function every day at 7 AM JST
+            Name: !Sub "NewsProcessingSchedule-${Environment}"
+            Description: !Sub "Triggers the news processing function every day at 7 AM JST (${Environment})"
 
 Parameters:
+  Environment:
+    Type: String
+    Default: stg
+    AllowedValues:
+      - stg
+      - prod
+    Description: Environment name (stg or prod)
+
   S3BucketName:
     Type: String
     Default: news-audio-files-kenchang198-dev
@@ -103,6 +113,14 @@ Outputs:
     Description: News Processing Lambda Function ARN
     Value: !GetAtt NewsProcessingFunction.Arn
 
+  NewsProcessingFunctionName:
+    Description: News Processing Lambda Function Name
+    Value: !Ref NewsProcessingFunction
+
   S3BucketName:
     Description: S3 bucket for audio files
     Value: !Ref S3BucketName
+
+  Environment:
+    Description: Deployment environment
+    Value: !Ref Environment
