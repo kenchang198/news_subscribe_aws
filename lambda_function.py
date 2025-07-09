@@ -6,9 +6,6 @@ import datetime  # datetimeをインポート
 from src.fetch_rss import fetch_rss
 from src.process_article import process_article
 from src.s3_uploader import upload_to_s3
-# ナレーション関連をインポート
-from src.narration_generator import generate_narration_texts
-from src.polly_synthesizer import synthesize_and_upload_narrations
 # 統合音声生成関連をインポート
 from src.unified import (
     generate_unified_content,
@@ -358,34 +355,6 @@ def lambda_handler(event, context):
         logger.info("処理対象の記事がなかったため、統合音声生成をスキップします。")
     # --- 統合音声生成処理 ここまで ---
 
-    # --- 従来のナレーション生成・合成処理 (テスト検証用に一時的に残す) ---
-    narration_s3_keys = {}
-    if processed_articles and False:  # False条件で無効化
-        try:
-            logger.info("ナレーション音声の生成を開始します...")
-            # 日付を取得 (Lambda実行時の日付)
-            episode_date = datetime.date.today()
-            # ナレーションテキスト生成
-            narration_texts = generate_narration_texts(
-                episode_date, processed_articles)
-            # 音声合成とS3アップロード
-            narration_s3_keys = synthesize_and_upload_narrations(
-                narrations=narration_texts,
-                episode_date=episode_date,
-                s3_bucket=S3_BUCKET_NAME,
-                s3_prefix=S3_PREFIX
-            )
-            logger.info("ナレーション音声の生成・アップロードが完了しました。")
-        except Exception as e:
-            logger.error(f"ナレーション生成中にエラーが発生しました: {e}", exc_info=True)
-            # ナレーション生成エラーは致命的ではないため、処理を続行
-    else:
-        logger.info("従来のナレーション生成は無効化されています。")
-    # --- 従来のナレーション生成・合成処理 ここまで ---
-
-    # 従来のプレイリストメタデータ生成処理は無効化
-    # 統合音声化に伴い、従来のメタデータ生成処理は不要となりました
-    # 統合メタデータは src/unified/metadata_processor.py で生成されます
 
     logger.info("Lambda処理完了")
 
