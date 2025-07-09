@@ -41,3 +41,7 @@ data/
 .DS_Store
 Thumbs.db
 .prompt/
+
+# Claude
+.claude/*
+INST.md
