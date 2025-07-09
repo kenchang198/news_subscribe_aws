@@ -1,1 +1,0 @@
-S3BucketName=your-bucket-name-here S3Prefix=audio/ OpenAIApiKey=your-openai-api-key-here GoogleApiKey=your-google-api-key-here AIProvider=gemini GeminiModel=gemini-2.5-pro-exp-03-25 PollyVoiceId=Takumi SummaryMaxLength=400
