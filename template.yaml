@@ -7,7 +7,25 @@ Globals:
     Timeout: 600
     MemorySize: 512
 
+Conditions:
+  CreateNewBucket: !Equals [!Ref CreateS3Bucket, "true"]
+  HasBucketName: !Not [!Equals [!Ref S3BucketName, ""]]
+  UseProvidedBucket: !And [!Condition HasBucketName, !Not [!Condition CreateNewBucket]]
+
 Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Condition: CreateNewBucket
+    Properties:
+      BucketName: !If
+        - HasBucketName
+        - !Ref S3BucketName
+        - !Sub "news-audio-files-${AWS::AccountId}-${Environment}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
   NewsProcessingFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -20,7 +38,13 @@ Resources:
         - x86_64
       Environment:
         Variables:
-          S3_BUCKET_NAME: !Ref S3BucketName
+          S3_BUCKET_NAME: !If
+            - CreateNewBucket
+            - !Ref S3Bucket
+            - !If
+              - HasBucketName
+              - !Ref S3BucketName
+              - !Sub "news-audio-files-${AWS::AccountId}-${Environment}"
           S3_PREFIX: !Ref S3Prefix
           OPENAI_API_KEY: !Ref OpenAIApiKey
           GOOGLE_API_KEY: !Ref GoogleApiKey
@@ -35,7 +59,13 @@ Resources:
       Policies:
         - AmazonPollyFullAccess
         - S3FullAccessPolicy:
-            BucketName: !Ref S3BucketName
+            BucketName: !If
+              - CreateNewBucket
+              - !Ref S3Bucket
+              - !If
+                - HasBucketName
+                - !Ref S3BucketName
+                - !Sub "news-audio-files-${AWS::AccountId}-${Environment}"
       Events:
         ScheduledEvent:
           Type: Schedule
@@ -55,8 +85,16 @@ Parameters:
 
   S3BucketName:
     Type: String
-    Default: news-audio-files-kenchang198-dev
-    Description: Name of the S3 bucket for storing audio files
+    Default: ""
+    Description: Name of the S3 bucket for storing audio files (leave empty to auto-generate)
+  
+  CreateS3Bucket:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Whether to create a new S3 bucket
 
   S3Prefix:
     Type: String
@@ -119,7 +157,13 @@ Outputs:
 
   S3BucketName:
     Description: S3 bucket for audio files
-    Value: !Ref S3BucketName
+    Value: !If
+      - CreateNewBucket
+      - !Ref S3Bucket
+      - !If
+        - HasBucketName
+        - !Ref S3BucketName
+        - !Sub "news-audio-files-${AWS::AccountId}-${Environment}"
 
   Environment:
     Description: Deployment environment
