@@ -72,6 +72,6 @@ if __name__ == "__main__":
     # テスト用
     articles = fetch_rss("https://b.hatena.ne.jp/entrylist/it.rss")
     for article in articles[:3]:  # 3件だけ表示
-        print(f"📌 {article['title']} ({article['source']})")
+        print(f"📌 {article['title']}")
         print(f"🔗 {article['link']}")
         print(f"📝 {article['summary']}\n")
