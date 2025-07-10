@@ -107,7 +107,7 @@ fi
 # Deploy with parameters
 echo ""
 echo "Deploying to AWS ($ENVIRONMENT environment)..."
-sam deploy --stack-name "news-subscribe-$ENVIRONMENT" --parameter-overrides \
+sam deploy --config-env "$ENVIRONMENT" --stack-name "news-subscribe-$ENVIRONMENT" --parameter-overrides \
   Environment="$ENVIRONMENT" \
   S3BucketName="$S3_BUCKET_NAME" \
   CreateS3Bucket="$CREATE_S3_BUCKET" \
