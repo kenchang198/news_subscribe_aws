@@ -2,6 +2,7 @@
 import logging
 import datetime
 from src import config  # 番組名設定を利用
+from src.utils.title_cleaner import clean_article_title
 
 # ロガー設定
 logger = logging.getLogger(__name__)
@@ -57,18 +58,19 @@ def generate_unified_content(processed_articles, episode_date=None):
         # 最大5件までの記事を文字数制限内で選択
         for i, article in enumerate(processed_articles):
             # 記事導入ナレーションの長さを推定
+            cleaned_title = clean_article_title(article['title'])
             if i == 0:
-                narration = f"まず最初に紹介する記事は{article['title']}です。\n\n"
+                narration = f"まず最初に紹介する記事は{cleaned_title}です。\n\n"
             elif i == len(processed_articles) - 1:
-                narration = f"最後の記事は{article['title']}です。\n\n"
+                narration = f"最後の記事は{cleaned_title}です。\n\n"
             elif i == 1:
-                narration = f"次の記事は{article['title']}です。\n\n"
+                narration = f"次の記事は{cleaned_title}です。\n\n"
             elif i == 2:
-                narration = f"続いてご紹介するのは{article['title']}です。\n\n"
+                narration = f"続いてご紹介するのは{cleaned_title}です。\n\n"
             elif i == 3:
-                narration = f"4つ目の記事は{article['title']}です。\n\n"
+                narration = f"4つ目の記事は{cleaned_title}です。\n\n"
             else:
-                narration = f"{i+1}つ目の記事は{article['title']}です。\n\n"
+                narration = f"{i+1}つ目の記事は{cleaned_title}です。\n\n"
 
             # この記事を追加した場合の総文字数を計算
             article_length = len(narration) + \
@@ -131,12 +133,12 @@ if __name__ == "__main__":
     sample_articles = [
         {
             "id": "article1",
-            "title": "AIの最新動向についての記事",
+            "title": "NVIDIA時価総額、世界初の4兆ドル突破　AI成長期待で - 日本経済新聞",
             "summary": "この記事はAIの最新動向について解説しています。近年、生成AIの発展により様々な分野でAIの活用が進んでいます。特に自然言語処理の分野では大きな進歩が見られ、テキスト生成や要約などのタスクにおいて人間に近い性能を発揮するようになってきました。今後もAI技術の発展は続くと予想されています。"
         },
         {
             "id": "article2",
-            "title": "クラウドコンピューティングの展望",
+            "title": "破産した秀和システムの出版事業を引き継いだ会社からの連絡を読んで、思わず笑ってしまった（CloseBox） | テクノエッジ TechnoEdge",
             "summary": "クラウドコンピューティングは企業のITインフラを大きく変革しています。AWSやAzure、Google Cloudなどの主要プロバイダーは、より高度なサービスを提供し続けており、サーバーレスアーキテクチャやコンテナ技術の普及が進んでいます。特に最近ではエッジコンピューティングとの連携も注目されており、より効率的なデータ処理の実現が期待されています。"
         }
     ]
