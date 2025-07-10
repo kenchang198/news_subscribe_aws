@@ -70,10 +70,10 @@ pip install -r requirements.txt
 
 4. **環境設定**
 
-`.env.example` をコピーして `.env` を作成します：
+`parameters.example.yaml` をコピーして設定ファイルを作成します：
 
 ```bash
-cp .env.example .env
+cp parameters.example.yaml parameters.yaml
 ```
 
 環境変数の詳細な設定方法とAPIキーの取得方法については [DEPLOYMENT.md](docs/DEPLOYMENT.md#環境変数の設定) を参照してください。
@@ -106,11 +106,17 @@ AWS環境へのデプロイについては、[DEPLOYMENT.md](docs/DEPLOYMENT.md)
 news_subscribe_aws/
 ├── lambda_function.py      # Lambda関数のエントリーポイント
 ├── src/                    # ソースコード
-│   ├── rss_fetcher.py     # RSSフィード取得
-│   ├── summarizer.py      # AI要約処理
-│   ├── text_to_speech.py  # 音声合成処理
-│   └── s3_uploader.py     # S3アップロード
+│   ├── fetch_rss.py       # RSSフィード取得
+│   ├── process_article.py # AI要約処理
+│   ├── s3_uploader.py     # S3アップロード
+│   ├── config.py          # 設定管理
+│   ├── utils.py           # ユーティリティ関数
+│   └── unified/           # 統合処理モジュール
+│       ├── content_generator.py    # コンテンツ生成
+│       ├── metadata_processor.py   # メタデータ処理
+│       └── speech_synthesizer.py   # 音声合成処理
 ├── template.yaml          # SAM テンプレート
+├── parameters.example.yaml # 設定パラメータのテンプレート
 ├── requirements.txt       # Python依存関係
 ├── deploy.sh             # デプロイスクリプト
 ├── deploy-env.sh         # 環境別デプロイスクリプト
@@ -119,10 +125,9 @@ news_subscribe_aws/
 
 ## 設定ファイル
 
-- `.env.example` - 環境変数のテンプレート
-- `.env` - ローカル開発用の環境変数
-- `.env.stg` - ステージング環境用の環境変数
-- `.env.prod` - 本番環境用の環境変数
+- `parameters.example.yaml` - 設定パラメータのテンプレート
+- `parameters.yaml` - ローカル開発用の設定ファイル
+- `template.yaml` - AWS SAMテンプレート（CloudFormationリソース定義）
 
 ## 開発ガイド
 
