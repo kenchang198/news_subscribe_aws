@@ -62,6 +62,27 @@ if [ -z "$GOOGLE_API_KEY" ] && [ -z "$OPENAI_API_KEY" ]; then
     exit 1
 fi
 
+# Check if S3 bucket exists
+echo ""
+echo "Checking if S3 bucket exists: $S3_BUCKET_NAME"
+if aws s3api head-bucket --bucket "$S3_BUCKET_NAME" 2>/dev/null; then
+    echo "✓ S3 bucket exists: $S3_BUCKET_NAME"
+    CREATE_S3_BUCKET="false"
+else
+    echo "✗ S3 bucket does not exist: $S3_BUCKET_NAME"
+    echo ""
+    read -p "Do you want to create the S3 bucket? (y/n): " -n 1 -r
+    echo ""
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        CREATE_S3_BUCKET="true"
+        echo "Will create S3 bucket during deployment"
+    else
+        echo "Error: S3 bucket does not exist and you chose not to create it"
+        echo "Please create the bucket manually or allow automatic creation"
+        exit 1
+    fi
+fi
+
 echo ""
 echo "Final parameters:"
 echo "  S3_BUCKET_NAME: $S3_BUCKET_NAME"
@@ -89,6 +110,7 @@ echo "Deploying to AWS ($ENVIRONMENT environment)..."
 sam deploy --stack-name "news-subscribe-$ENVIRONMENT" --parameter-overrides \
   Environment="$ENVIRONMENT" \
   S3BucketName="$S3_BUCKET_NAME" \
+  CreateS3Bucket="$CREATE_S3_BUCKET" \
   S3Prefix="$S3_PREFIX" \
   OpenAIApiKey="${OPENAI_API_KEY:-dummy-key}" \
   GoogleApiKey="${GOOGLE_API_KEY:-dummy-key}" \
