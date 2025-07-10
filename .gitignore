@@ -28,6 +28,8 @@ samconfig.toml
 
 # Local
 .env
+.env.prod
+.env.stg
 parameters.yaml
 parameters.txt
 .vscode/
@@ -45,3 +47,4 @@ Thumbs.db
 # Claude
 .claude/*
 INST.md
+INST.txt
